@@ -17,10 +17,17 @@ const logBox = document.getElementById('logBox');
 
 const STORAGE_KEY = 'area_preferences_v1';
 const SCHEDULE_KEY = 'schedule_settings_v1';
+const FLOW_SETTINGS_KEY = 'flow_settings_v1';
 const ALLOWED_HOST_SUFFIX = 'ticketplus.com.tw';
 
 let areaPreferences = [];
 let scheduleSettings = { startTime: '11:00:01', stopTime: '11:01:00' };
+let flowSettings = {
+  ticketCount: 1,
+  refreshDelaySec: 1.5,
+  areaDelaySec: 0.3,
+  orderMode: 'top_to_bottom'
+};
 
 function isAllowedTicketplusUrl(url) {
   if (!url || typeof url !== 'string') {
@@ -109,6 +116,59 @@ function getRefreshToAreaDelayMs() {
     return 0;
   }
   return Math.round(parsed * 1000);
+}
+
+async function loadFlowSettings() {
+  const result = await chrome.storage.local.get(FLOW_SETTINGS_KEY);
+  const saved = result?.[FLOW_SETTINGS_KEY];
+  if (!saved || typeof saved !== 'object') {
+    flowSettings = {
+      ticketCount: 1,
+      refreshDelaySec: 1.5,
+      areaDelaySec: 0.3,
+      orderMode: 'top_to_bottom'
+    };
+    return;
+  }
+
+  const ticketCount = Number.parseInt(String(saved.ticketCount ?? '1'), 10);
+  const refreshDelaySec = Number.parseFloat(String(saved.refreshDelaySec ?? '1.5'));
+  const areaDelaySec = Number.parseFloat(String(saved.areaDelaySec ?? '0.3'));
+  const orderMode = typeof saved.orderMode === 'string' ? saved.orderMode : 'top_to_bottom';
+
+  flowSettings = {
+    ticketCount: Number.isFinite(ticketCount) ? Math.min(4, Math.max(0, ticketCount)) : 1,
+    refreshDelaySec: Number.isFinite(refreshDelaySec) && refreshDelaySec >= 0 ? refreshDelaySec : 1.5,
+    areaDelaySec: Number.isFinite(areaDelaySec) && areaDelaySec >= 0 ? areaDelaySec : 0.3,
+    orderMode
+  };
+}
+
+async function saveFlowSettings() {
+  const ticketCount = Number.parseInt(ticketCountInput?.value || '1', 10);
+  const refreshDelaySec = Number.parseFloat(refreshToAreaDelaySecInput?.value || '1.5');
+  const areaDelaySec = Number.parseFloat(areaToPlusDelaySecInput?.value || '0.3');
+
+  flowSettings = {
+    ticketCount: Number.isFinite(ticketCount) ? Math.min(4, Math.max(0, ticketCount)) : 1,
+    refreshDelaySec: Number.isFinite(refreshDelaySec) && refreshDelaySec >= 0 ? refreshDelaySec : 1.5,
+    areaDelaySec: Number.isFinite(areaDelaySec) && areaDelaySec >= 0 ? areaDelaySec : 0.3,
+    orderMode: areaOrderModeEl?.value || 'top_to_bottom'
+  };
+
+  ticketCountInput.value = String(flowSettings.ticketCount);
+  refreshToAreaDelaySecInput.value = String(flowSettings.refreshDelaySec);
+  areaToPlusDelaySecInput.value = String(flowSettings.areaDelaySec);
+  areaOrderModeEl.value = flowSettings.orderMode;
+
+  await chrome.storage.local.set({ [FLOW_SETTINGS_KEY]: flowSettings });
+}
+
+function hydrateFlowSettingsUi() {
+  ticketCountInput.value = String(flowSettings.ticketCount);
+  refreshToAreaDelaySecInput.value = String(flowSettings.refreshDelaySec);
+  areaToPlusDelaySecInput.value = String(flowSettings.areaDelaySec);
+  areaOrderModeEl.value = flowSettings.orderMode;
 }
 
 function render(running, intervalMs, errorText = '') {
@@ -449,11 +509,29 @@ stopScheduleBtn.addEventListener('click', async () => {
   await refreshData();
 });
 
+ticketCountInput.addEventListener('change', async () => {
+  await saveFlowSettings();
+});
+
+refreshToAreaDelaySecInput.addEventListener('change', async () => {
+  await saveFlowSettings();
+});
+
+areaToPlusDelaySecInput.addEventListener('change', async () => {
+  await saveFlowSettings();
+});
+
+areaOrderModeEl.addEventListener('change', async () => {
+  await saveFlowSettings();
+});
+
 async function init() {
   await loadAreaPreferences();
   await loadScheduleSettings();
+  await loadFlowSettings();
   renderAreaList();
   hydrateScheduleSettingsUi();
+  hydrateFlowSettingsUi();
   await syncAutoTargets();
   await refreshData();
   await refreshAreas();

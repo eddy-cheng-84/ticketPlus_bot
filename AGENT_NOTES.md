@@ -46,6 +46,7 @@
   - If `+` is not found after area selection, flow waits `重新整理秒數`, refreshes, and retries.
   - Added `選區後延遲幾秒按+` setting for waiting before `+` clicks.
   - Added `選擇順序` setting: `top to bottom`, `bottom to top`, `middle`, `random`.
+  - Flow settings are persisted automatically on change (`flow_settings_v1`).
   - Area fallback logic:
     - Uses checked checklist targets first.
     - If no targets are checked, all areas are candidates.
