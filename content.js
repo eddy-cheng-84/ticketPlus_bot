@@ -199,7 +199,11 @@
 
   function clickPlusTimes(count) {
     const normalizedCount = Number.isFinite(count) ? count : 1;
-    const times = Math.max(1, normalizedCount);
+    const times = Math.min(4, Math.max(0, normalizedCount));
+    if (times === 0) {
+      pushLog('手動點擊：設定 0 張票，略過點 +');
+      return { ok: true, clicked: 0 };
+    }
     for (let i = 0; i < times; i += 1) {
       const result = clickPlusOnActivePanel();
       if (!result.ok) {
@@ -277,7 +281,9 @@
 
   async function runPurchaseFlow(options = {}) {
     const plusCountParsed = Number.parseInt(String(options.plusCount || '1'), 10);
-    const plusCount = Number.isFinite(plusCountParsed) && plusCountParsed > 0 ? plusCountParsed : 1;
+    const plusCount = Number.isFinite(plusCountParsed)
+      ? Math.min(4, Math.max(0, plusCountParsed))
+      : 1;
     const delayParsed = Number.parseInt(String(options.areaToPlusDelayMs || '0'), 10);
     const areaToPlusDelayMs = Number.isFinite(delayParsed) && delayParsed > 0 ? delayParsed : 0;
 

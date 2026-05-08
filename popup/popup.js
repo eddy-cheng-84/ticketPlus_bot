@@ -79,10 +79,10 @@ function getAreaKeyword() {
 
 function getTicketCount() {
   const parsed = Number.parseInt(ticketCountInput?.value || '1', 10);
-  if (!Number.isFinite(parsed) || parsed < 1) {
+  if (!Number.isFinite(parsed)) {
     return 1;
   }
-  return parsed;
+  return Math.min(4, Math.max(0, parsed));
 }
 
 function getAreaToPlusDelayMs() {
