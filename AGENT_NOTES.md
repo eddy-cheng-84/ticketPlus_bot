@@ -7,8 +7,8 @@
 - User asked assistant to first read files under this project:
   - `C:\Users\Lu_white\Documents\chrome_extension\ticket_plus_bot`
 - User required all follow-up development changes to be committed with Git.
-- User asked to create a markdown summary of the conversation for future continuity and commit it into this repo.
-- User requested iterative feature development for ticket area selection automation.
+- User asked to create and maintain a markdown summary for continuity (`AGENT_NOTES.md`).
+- User requested iterative feature development for ticket area selection and purchase flow automation.
 
 ## Current Project Snapshot
 - Chrome extension with popup + content script workflow.
@@ -32,19 +32,31 @@
   - Click panel by keyword.
   - Click `更新票數` then panel by keyword.
   - Click `+` button in current active/expanded panel.
+  - Click `下一步` button by text matching.
 - Seat area discovery and selection
   - Read all panel headers from page and show checklist in popup.
   - Multi-select seat areas for auto targeting.
   - Drag-and-drop sorting for target priority.
   - Persist checklist + order using `chrome.storage.local`.
+- One-click purchase flow
+  - Added `一鍵執行流程` button.
+  - Flow steps: `更新票數 -> 選票區 -> 點 + -> 下一步`.
+  - Added `幾張票` setting with hard limit `0~4`.
+  - Added `選區後延遲秒數` setting for waiting before `+` clicks.
+  - Added `選擇順序` setting: `top to bottom`, `bottom to top`, `middle`, `random`.
+  - Area fallback logic:
+    - If keyword is provided, use keyword match first.
+    - If keyword is empty, use checked checklist targets.
+    - If both are empty, all areas are candidates.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`
   - `CLICK_REFRESH_ONCE`, `CLICK_PANEL_BY_TEXT`, `CLICK_REFRESH_AND_PANEL_BY_TEXT`
-  - `GET_PANEL_AREAS`, `SET_AUTO_TARGETS`, `CLICK_PLUS_ON_ACTIVE_PANEL`
+  - `GET_PANEL_AREAS`, `SET_AUTO_TARGETS`, `CLICK_PLUS_ON_ACTIVE_PANEL`, `CLICK_NEXT_STEP`
+  - `RUN_PURCHASE_FLOW`
 
 ## Git Workflow Agreement
 - Assistant should commit every development change requested by user.
 
 ## Notes For Next Development
-- If user wants stronger seat matching, add exact-match mode and regex mode.
-- If user wants quantity automation, add configurable retry and max-plus count.
+- Optional: keyword-miss fallback (if keyword has no match, fallback to checklist/all areas).
+- Optional: add retry policy for panel expansion and plus clicks when page transitions are slow.
