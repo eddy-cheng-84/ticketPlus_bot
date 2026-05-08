@@ -48,9 +48,13 @@
     - If keyword is provided, use keyword match first.
     - If keyword is empty, use checked checklist targets.
     - If both are empty, all areas are candidates.
+  - Start/Stop now runs flow-loop mode:
+    - `Start` triggers full flow with `下一步`.
+    - After `下一步`, waits 0.5s and checks URL change.
+    - If no navigation, loops the same flow again.
 - Schedule controls
   - Added daily schedule settings in popup.
-  - Can auto-start and auto-stop by `HH:MM:SS` time.
+  - Can auto-start and auto-stop by `hh:mm:ss AM/PM` time.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`
   - `CLICK_REFRESH_ONCE`, `CLICK_PANEL_BY_TEXT`, `CLICK_REFRESH_AND_PANEL_BY_TEXT`

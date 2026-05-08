@@ -1,11 +1,12 @@
 ﻿(() => {
   const INTERVAL_MS = 10000;
   const MAX_LOGS = 200;
-  const MAX_FLOW_ATTEMPTS = 80;
+  const LOOP_RETRY_DELAY_MS = 500;
 
   let running = false;
   let timerId = null;
   let autoTargets = [];
+  let startOptions = {};
   const logs = [];
 
   function pushLog(message) {
@@ -119,35 +120,48 @@
     return { ok: false, error: 'NO_MATCHED_PANEL' };
   }
 
-  function tick() {
-    if (!running) {
-      return;
-    }
-
-    const refreshResult = clickRefreshOnce();
-    if (!refreshResult.ok) {
-      return;
-    }
-
-    if (autoTargets.length > 0) {
-      clickFirstAvailableAutoTarget();
+  async function runLoopMode() {
+    while (running) {
+      const flowResult = await runPurchaseFlow(startOptions, { includeNextStep: true });
+      if (!running) {
+        return;
+      }
+      if (!flowResult.ok) {
+        pushLog(`流程失敗：${flowResult.step || 'unknown'} / ${flowResult.error || 'UNKNOWN'}`);
+        await sleep(LOOP_RETRY_DELAY_MS);
+        continue;
+      }
+      if (flowResult.navigated) {
+        pushLog('偵測到已跳轉頁面，停止 loop');
+        stop();
+        return;
+      }
+      pushLog('未偵測到跳轉，0.5 秒後重跑流程');
+      await sleep(LOOP_RETRY_DELAY_MS);
     }
   }
 
-  function start(targets = []) {
+  function start(options = {}) {
     if (running) {
       pushLog('啟動請求略過：目前已在執行');
       return;
     }
 
-    autoTargets = Array.isArray(targets)
-      ? targets.map((item) => normalizeText(item)).filter(Boolean)
+    autoTargets = Array.isArray(options.selectedTargets)
+      ? options.selectedTargets.map((item) => normalizeText(item)).filter(Boolean)
       : [];
+    startOptions = {
+      keyword: options.keyword || '',
+      selectedTargets: autoTargets,
+      orderMode: options.orderMode || 'top_to_bottom',
+      plusCount: options.plusCount,
+      refreshToAreaDelayMs: options.refreshToAreaDelayMs,
+      areaToPlusDelayMs: options.areaToPlusDelayMs
+    };
     running = true;
-    timerId = window.setInterval(tick, INTERVAL_MS);
-    pushLog(`已啟動，每 ${INTERVAL_MS / 1000} 秒執行一次，目標數：${autoTargets.length}`);
-    tick();
-    console.log('[ticket_plus_bot] auto click started');
+    pushLog(`已啟動流程 loop，目標數：${autoTargets.length}`);
+    runLoopMode();
+    console.log('[ticket_plus_bot] flow loop started');
   }
 
   function clickRefreshOnce() {
@@ -280,7 +294,12 @@
     });
   }
 
-  async function runPurchaseFlow(options = {}) {
+  function detectNavigation(beforeHref) {
+    const afterHref = window.location.href;
+    return beforeHref !== afterHref;
+  }
+
+  async function runPurchaseFlow(options = {}, runtimeOptions = {}) {
     const plusCountParsed = Number.parseInt(String(options.plusCount || '1'), 10);
     const plusCount = Number.isFinite(plusCountParsed)
       ? Math.min(4, Math.max(0, plusCountParsed))
@@ -294,7 +313,10 @@
 
     let attempt = 0;
     let panelResult = null;
-    while (attempt < MAX_FLOW_ATTEMPTS) {
+    while (true) {
+      if (!running && runtimeOptions.includeNextStep) {
+        return { ok: false, step: 'stopped', error: 'LOOP_STOPPED' };
+      }
       attempt += 1;
       const refreshResult = clickRefreshOnce();
       if (!refreshResult.ok) {
@@ -322,14 +344,25 @@
 
       const plusResult = clickPlusTimes(plusCount);
       if (plusResult.ok) {
-        pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +');
+        let navigated = false;
+        if (runtimeOptions.includeNextStep) {
+          const beforeHref = window.location.href;
+          const nextResult = clickNextStepButton();
+          if (!nextResult.ok) {
+            return { ok: false, step: 'next_step', error: nextResult.error };
+          }
+          await sleep(500);
+          navigated = detectNavigation(beforeHref);
+        }
+        pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +' + (runtimeOptions.includeNextStep ? ' -> 下一步' : ''));
         return {
           ok: true,
           matched: panelResult.matched,
           plusCount,
           refreshToAreaDelayMs,
           areaToPlusDelayMs,
-          attempt
+          attempt,
+          navigated
         };
       }
 
@@ -341,7 +374,6 @@
       return { ok: false, step: 'plus', error: plusResult.error };
     }
 
-    return { ok: false, step: 'plus', error: 'PLUS_NOT_FOUND_AFTER_RETRIES' };
   }
 
   function stop() {
@@ -366,7 +398,7 @@
     }
 
     if (message.type === 'START_BOT') {
-      start(message.targets);
+      start(message);
       sendResponse({ ok: true, running: true, targets: autoTargets });
       return;
     }
