@@ -48,6 +48,10 @@
     - If keyword is provided, use keyword match first.
     - If keyword is empty, use checked checklist targets.
     - If both are empty, all areas are candidates.
+  - Seat availability guard:
+    - Parses `剩餘 N` from area text.
+    - Skips areas with `剩餘 0`.
+    - If all desired targets are `剩餘 0`, refreshes and retries detection automatically.
   - Start/Stop now runs flow-loop mode:
     - `Start` triggers full flow with `下一步`.
     - After each full run, waits 0.5s and loops again.

@@ -64,9 +64,26 @@
       if (!name) {
         continue;
       }
-      entries.push({ name, button: header });
+      entries.push({
+        name,
+        button: header,
+        remaining: extractRemainingCount(name)
+      });
     }
     return entries;
+  }
+
+  function extractRemainingCount(text) {
+    const normalized = normalizeText(text);
+    const match = normalized.match(/剩餘\s*(\d+)/);
+    if (!match) {
+      return null;
+    }
+    return Number.parseInt(match[1], 10);
+  }
+
+  function isSoldOutEntry(entry) {
+    return Number.isFinite(entry?.remaining) && entry.remaining <= 0;
   }
 
   function chooseEntryByOrder(entries, orderMode) {
@@ -233,7 +250,7 @@
     const normalizedKeyword = normalizeText(keyword || '');
     let candidates = [];
     if (normalizedKeyword) {
-      candidates = entries.filter((entry) => entry.name.includes(normalizedKeyword));
+      candidates = entries.filter((entry) => entry.name.includes(normalizedKeyword) && !isSoldOutEntry(entry));
       if (candidates.length === 0) {
         pushLog(`流程失敗：找不到關鍵字票區「${normalizedKeyword}」`);
         return { ok: false, error: 'KEYWORD_PANEL_NOT_FOUND' };
@@ -244,11 +261,25 @@
         : [];
 
       if (normalizedTargets.length > 0) {
-        candidates = entries.filter((entry) =>
-          normalizedTargets.some((target) => entry.name.includes(target))
-        );
+        for (const target of normalizedTargets) {
+          const targetMatches = entries.filter((entry) => entry.name.includes(target));
+          const availableMatches = targetMatches.filter((entry) => !isSoldOutEntry(entry));
+          if (availableMatches.length > 0) {
+            candidates = availableMatches;
+            break;
+          }
+          if (targetMatches.length > 0) {
+            pushLog(`略過票區（剩餘 0）：「${target}」`);
+          }
+        }
+        if (candidates.length === 0) {
+          return { ok: false, error: 'DESIRED_TARGETS_SOLD_OUT' };
+        }
       } else {
-        candidates = entries;
+        candidates = entries.filter((entry) => !isSoldOutEntry(entry));
+        if (candidates.length === 0) {
+          return { ok: false, error: 'ALL_VISIBLE_TARGETS_SOLD_OUT' };
+        }
       }
     }
 
@@ -324,6 +355,10 @@
         options.orderMode || 'top_to_bottom'
       );
       if (!panelResult.ok) {
+        if (panelResult.error === 'DESIRED_TARGETS_SOLD_OUT' || panelResult.error === 'ALL_VISIBLE_TARGETS_SOLD_OUT') {
+          pushLog('目前可見票區剩餘皆為 0，將重新整理後重試');
+          continue;
+        }
         return { ok: false, step: 'panel', error: panelResult.error };
       }
 
