@@ -163,7 +163,6 @@
       ? options.selectedTargets.map((item) => normalizeText(item)).filter(Boolean)
       : [];
     startOptions = {
-      keyword: options.keyword || '',
       selectedTargets: autoTargets,
       orderMode: options.orderMode || 'top_to_bottom',
       plusCount: options.plusCount,
@@ -241,45 +240,36 @@
     return { ok: true, clicked: times };
   }
 
-  function selectPanelForFlow(keyword, selectedTargets, orderMode) {
+  function selectPanelForFlow(selectedTargets, orderMode) {
     const entries = getPanelEntries();
     if (entries.length === 0) {
       return { ok: false, error: 'NO_PANEL_ENTRIES' };
     }
 
-    const normalizedKeyword = normalizeText(keyword || '');
     let candidates = [];
-    if (normalizedKeyword) {
-      candidates = entries.filter((entry) => entry.name.includes(normalizedKeyword) && !isSoldOutEntry(entry));
+    const normalizedTargets = Array.isArray(selectedTargets)
+      ? selectedTargets.map((item) => normalizeText(item)).filter(Boolean)
+      : [];
+
+    if (normalizedTargets.length > 0) {
+      for (const target of normalizedTargets) {
+        const targetMatches = entries.filter((entry) => entry.name.includes(target));
+        const availableMatches = targetMatches.filter((entry) => !isSoldOutEntry(entry));
+        if (availableMatches.length > 0) {
+          candidates = availableMatches;
+          break;
+        }
+        if (targetMatches.length > 0) {
+          pushLog(`略過票區（剩餘 0）：「${target}」`);
+        }
+      }
       if (candidates.length === 0) {
-        pushLog(`流程失敗：找不到關鍵字票區「${normalizedKeyword}」`);
-        return { ok: false, error: 'KEYWORD_PANEL_NOT_FOUND' };
+        return { ok: false, error: 'DESIRED_TARGETS_SOLD_OUT' };
       }
     } else {
-      const normalizedTargets = Array.isArray(selectedTargets)
-        ? selectedTargets.map((item) => normalizeText(item)).filter(Boolean)
-        : [];
-
-      if (normalizedTargets.length > 0) {
-        for (const target of normalizedTargets) {
-          const targetMatches = entries.filter((entry) => entry.name.includes(target));
-          const availableMatches = targetMatches.filter((entry) => !isSoldOutEntry(entry));
-          if (availableMatches.length > 0) {
-            candidates = availableMatches;
-            break;
-          }
-          if (targetMatches.length > 0) {
-            pushLog(`略過票區（剩餘 0）：「${target}」`);
-          }
-        }
-        if (candidates.length === 0) {
-          return { ok: false, error: 'DESIRED_TARGETS_SOLD_OUT' };
-        }
-      } else {
-        candidates = entries.filter((entry) => !isSoldOutEntry(entry));
-        if (candidates.length === 0) {
-          return { ok: false, error: 'ALL_VISIBLE_TARGETS_SOLD_OUT' };
-        }
+      candidates = entries.filter((entry) => !isSoldOutEntry(entry));
+      if (candidates.length === 0) {
+        return { ok: false, error: 'ALL_VISIBLE_TARGETS_SOLD_OUT' };
       }
     }
 
@@ -350,7 +340,6 @@
       }
 
       panelResult = selectPanelForFlow(
-        options.keyword || '',
         options.selectedTargets || [],
         options.orderMode || 'top_to_bottom'
       );

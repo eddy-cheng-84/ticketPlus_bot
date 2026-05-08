@@ -4,7 +4,6 @@ const stopBtn = document.getElementById('stopBtn');
 const reloadAreasBtn = document.getElementById('reloadAreasBtn');
 const saveScheduleBtn = document.getElementById('saveScheduleBtn');
 const stopScheduleBtn = document.getElementById('stopScheduleBtn');
-const areaKeywordInput = document.getElementById('areaKeyword');
 const ticketCountInput = document.getElementById('ticketCount');
 const refreshToAreaDelaySecInput = document.getElementById('refreshToAreaDelaySec');
 const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
@@ -110,11 +109,6 @@ function renderLogs(logs) {
 
   logBox.textContent = logs.slice(-80).join('\n');
   logBox.scrollTop = logBox.scrollHeight;
-}
-
-function getAreaKeyword() {
-  const raw = (areaKeywordInput?.value || '').trim();
-  return raw;
 }
 
 function getTicketCount() {
@@ -227,7 +221,6 @@ function getCurrentDateYmd() {
 async function runScheduledStart() {
   const result = await sendToActiveTab({
     type: 'START_BOT',
-    keyword: getAreaKeyword(),
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
     plusCount: getTicketCount(),
@@ -415,7 +408,6 @@ async function refreshData() {
 startBtn.addEventListener('click', async () => {
   const result = await sendToActiveTab({
     type: 'START_BOT',
-    keyword: getAreaKeyword(),
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
     plusCount: getTicketCount(),

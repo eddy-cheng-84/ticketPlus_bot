@@ -45,9 +45,8 @@
   - Added `選區後延遲幾秒按+` setting for waiting before `+` clicks.
   - Added `選擇順序` setting: `top to bottom`, `bottom to top`, `middle`, `random`.
   - Area fallback logic:
-    - If keyword is provided, use keyword match first.
-    - If keyword is empty, use checked checklist targets.
-    - If both are empty, all areas are candidates.
+    - Uses checked checklist targets first.
+    - If no targets are checked, all areas are candidates.
   - Seat availability guard:
     - Parses `剩餘 N` from area text.
     - Skips areas with `剩餘 0`.
