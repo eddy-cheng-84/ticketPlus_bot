@@ -57,7 +57,7 @@
     - After each full run, waits 0.5s and loops again.
 - Schedule controls
   - Added daily schedule settings in popup.
-  - Can auto-start and auto-stop by `hh:mm:ss AM/PM` time.
+  - Can auto-start and auto-stop by `HH:MM:SS` time input (`type="time"` with `step="1"`).
   - Uses explicit buttons: `儲存並排程` and `停止排程`.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`

@@ -19,8 +19,8 @@ const SCHEDULE_KEY = 'schedule_settings_v1';
 let areaPreferences = [];
 let scheduleSettings = {
   enabled: false,
-  startTime: '11:00:01 AM',
-  stopTime: '11:01:00 AM'
+  startTime: '11:00:01',
+  stopTime: '11:01:00'
 };
 let lastScheduleTrigger = {
   start: '',
@@ -66,20 +66,19 @@ function normalizeText(text) {
   return (text || '').replace(/\s+/g, ' ').trim();
 }
 
-function normalizeAmPmTime(value) {
-  const raw = normalizeText(value).toUpperCase();
-  const match = raw.match(/^(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)$/);
+function normalizeHmsTime(value) {
+  const raw = normalizeText(value);
+  const match = raw.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
   if (!match) {
     return '';
   }
   const hour = Number.parseInt(match[1], 10);
   const minute = Number.parseInt(match[2], 10);
   const second = Number.parseInt(match[3], 10);
-  const ampm = match[4];
-  if (hour < 1 || hour > 12 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
     return '';
   }
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')} ${ampm}`;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
 }
 
 function getSelectedTargets() {
@@ -166,23 +165,23 @@ async function loadScheduleSettings() {
   const result = await chrome.storage.local.get(SCHEDULE_KEY);
   const saved = result?.[SCHEDULE_KEY];
   if (!saved || typeof saved !== 'object') {
-    scheduleSettings = { enabled: false, startTime: '11:00:01 AM', stopTime: '11:01:00 AM' };
+    scheduleSettings = { enabled: false, startTime: '11:00:01', stopTime: '11:01:00' };
     return;
   }
   scheduleSettings = {
     enabled: Boolean(saved.enabled),
     startTime:
-      normalizeAmPmTime(typeof saved.startTime === 'string' ? saved.startTime : '') || '11:00:01 AM',
+      normalizeHmsTime(typeof saved.startTime === 'string' ? saved.startTime : '') || '11:00:01',
     stopTime:
-      normalizeAmPmTime(typeof saved.stopTime === 'string' ? saved.stopTime : '') || '11:01:00 AM'
+      normalizeHmsTime(typeof saved.stopTime === 'string' ? saved.stopTime : '') || '11:01:00'
   };
 }
 
 async function saveScheduleSettings() {
-  const normalizedStart = normalizeAmPmTime(scheduleStartTimeEl?.value || '');
-  const normalizedStop = normalizeAmPmTime(scheduleStopTimeEl?.value || '');
+  const normalizedStart = normalizeHmsTime(scheduleStartTimeEl?.value || '');
+  const normalizedStop = normalizeHmsTime(scheduleStopTimeEl?.value || '');
   if (!normalizedStart || !normalizedStop) {
-    render(false, 10000, '定時格式錯誤，請用 11:00:01 AM');
+    render(false, 10000, '定時格式錯誤，請用 11:00:01');
     return;
   }
 
@@ -209,15 +208,12 @@ async function disableScheduleSettings() {
   await chrome.storage.local.set({ [SCHEDULE_KEY]: scheduleSettings });
 }
 
-function getCurrentTimeAmPm() {
+function getCurrentTimeHms() {
   const now = new Date();
-  const hour24 = now.getHours();
-  const ampm = hour24 >= 12 ? 'PM' : 'AM';
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  const h = String(hour12).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
   const m = String(now.getMinutes()).padStart(2, '0');
   const s = String(now.getSeconds()).padStart(2, '0');
-  return `${h}:${m}:${s} ${ampm}`;
+  return `${h}:${m}:${s}`;
 }
 
 function getCurrentDateYmd() {
@@ -257,7 +253,7 @@ async function checkScheduleTick() {
     return;
   }
 
-  const timeNow = getCurrentTimeAmPm();
+  const timeNow = getCurrentTimeHms();
   const dateNow = getCurrentDateYmd();
 
   if (scheduleSettings.startTime === timeNow && lastScheduleTrigger.start !== dateNow) {
