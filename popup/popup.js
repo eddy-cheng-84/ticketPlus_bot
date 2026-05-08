@@ -6,6 +6,7 @@ const refreshOnceBtn = document.getElementById('refreshOnceBtn');
 const vip2Btn = document.getElementById('vip2Btn');
 const comboBtn = document.getElementById('comboBtn');
 const plusBtn = document.getElementById('plusBtn');
+const nextStepBtn = document.getElementById('nextStepBtn');
 const areaKeywordInput = document.getElementById('areaKeyword');
 const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
@@ -299,6 +300,16 @@ plusBtn.addEventListener('click', async () => {
   const result = await sendToActiveTab({ type: 'CLICK_PLUS_ON_ACTIVE_PANEL' });
   if (!result || !result.ok) {
     render(false, 10000, '點 + 號失敗');
+    return;
+  }
+
+  await refreshData();
+});
+
+nextStepBtn.addEventListener('click', async () => {
+  const result = await sendToActiveTab({ type: 'CLICK_NEXT_STEP' });
+  if (!result || !result.ok) {
+    render(false, 10000, '點下一步失敗');
     return;
   }
 

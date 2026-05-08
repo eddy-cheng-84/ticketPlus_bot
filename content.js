@@ -167,6 +167,27 @@
     return { ok: true };
   }
 
+  function clickNextStepButton() {
+    const candidates = document.querySelectorAll('span.v-btn__content');
+    for (const span of candidates) {
+      if (normalizeText(span.textContent || '') !== '下一步') {
+        continue;
+      }
+
+      const target = span.closest('button, [role="button"], .v-btn');
+      if (!target) {
+        continue;
+      }
+
+      target.click();
+      pushLog('手動點擊成功：已點擊「下一步」');
+      return { ok: true };
+    }
+
+    pushLog('手動點擊失敗：未找到「下一步」按鈕');
+    return { ok: false, error: 'NEXT_STEP_NOT_FOUND' };
+  }
+
   function stop() {
     if (!running) {
       pushLog('暫停請求略過：目前已停止');
@@ -263,6 +284,11 @@
 
     if (message.type === 'CLICK_PLUS_ON_ACTIVE_PANEL') {
       sendResponse(clickPlusOnActivePanel());
+      return;
+    }
+
+    if (message.type === 'CLICK_NEXT_STEP') {
+      sendResponse(clickNextStepButton());
     }
   });
 
