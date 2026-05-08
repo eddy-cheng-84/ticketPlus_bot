@@ -36,6 +36,16 @@
           </select>
           <button id="runFlowBtn" class="manual">一鍵執行流程</button>
         </section>
+        <section class="flow-settings">
+          <label class="keyword-label">
+            <input id="scheduleEnabled" type="checkbox" />
+            啟用定時
+          </label>
+          <label for="scheduleStartTime" class="keyword-label">每日自動啟動時間</label>
+          <input id="scheduleStartTime" class="keyword-input" type="time" step="1" value="11:00:01" />
+          <label for="scheduleStopTime" class="keyword-label">每日自動暫停時間</label>
+          <input id="scheduleStopTime" class="keyword-input" type="time" step="1" value="11:01:00" />
+        </section>
         <label for="areaKeyword" class="keyword-label">單次手動關鍵字</label>
         <input id="areaKeyword" class="keyword-input" type="text" value="" placeholder="可留空" />
       </section>

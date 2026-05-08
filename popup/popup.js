@@ -8,11 +8,24 @@ const ticketCountInput = document.getElementById('ticketCount');
 const refreshToAreaDelaySecInput = document.getElementById('refreshToAreaDelaySec');
 const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
 const areaOrderModeEl = document.getElementById('areaOrderMode');
+const scheduleEnabledEl = document.getElementById('scheduleEnabled');
+const scheduleStartTimeEl = document.getElementById('scheduleStartTime');
+const scheduleStopTimeEl = document.getElementById('scheduleStopTime');
 const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
 
 const STORAGE_KEY = 'area_preferences_v1';
+const SCHEDULE_KEY = 'schedule_settings_v1';
 let areaPreferences = [];
+let scheduleSettings = {
+  enabled: false,
+  startTime: '11:00:01',
+  stopTime: '11:01:00'
+};
+let lastScheduleTrigger = {
+  start: '',
+  stop: ''
+};
 const ALLOWED_HOST_SUFFIX = 'ticketplus.com.tw';
 
 function isAllowedTicketplusUrl(url) {
@@ -131,6 +144,89 @@ async function loadAreaPreferences() {
 
 async function saveAreaPreferences() {
   await chrome.storage.local.set({ [STORAGE_KEY]: areaPreferences });
+}
+
+async function loadScheduleSettings() {
+  const result = await chrome.storage.local.get(SCHEDULE_KEY);
+  const saved = result?.[SCHEDULE_KEY];
+  if (!saved || typeof saved !== 'object') {
+    scheduleSettings = { enabled: false, startTime: '11:00:01', stopTime: '11:01:00' };
+    return;
+  }
+  scheduleSettings = {
+    enabled: Boolean(saved.enabled),
+    startTime: typeof saved.startTime === 'string' && saved.startTime ? saved.startTime : '11:00:01',
+    stopTime: typeof saved.stopTime === 'string' && saved.stopTime ? saved.stopTime : '11:01:00'
+  };
+}
+
+async function saveScheduleSettings() {
+  scheduleSettings = {
+    enabled: Boolean(scheduleEnabledEl?.checked),
+    startTime: scheduleStartTimeEl?.value || '11:00:01',
+    stopTime: scheduleStopTimeEl?.value || '11:01:00'
+  };
+  await chrome.storage.local.set({ [SCHEDULE_KEY]: scheduleSettings });
+}
+
+function hydrateScheduleSettingsUi() {
+  scheduleEnabledEl.checked = Boolean(scheduleSettings.enabled);
+  scheduleStartTimeEl.value = scheduleSettings.startTime || '11:00:01';
+  scheduleStopTimeEl.value = scheduleSettings.stopTime || '11:01:00';
+}
+
+function getCurrentTimeHms() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+function getCurrentDateYmd() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+async function runScheduledStart() {
+  const result = await sendToActiveTab({
+    type: 'START_BOT',
+    targets: getSelectedTargets()
+  });
+  if (!result || !result.ok) {
+    return;
+  }
+  await refreshData();
+}
+
+async function runScheduledStop() {
+  const result = await sendToActiveTab({ type: 'STOP_BOT' });
+  if (!result || !result.ok) {
+    return;
+  }
+  await refreshData();
+}
+
+async function checkScheduleTick() {
+  if (!scheduleSettings.enabled) {
+    return;
+  }
+
+  const timeNow = getCurrentTimeHms();
+  const dateNow = getCurrentDateYmd();
+
+  if (scheduleSettings.startTime === timeNow && lastScheduleTrigger.start !== dateNow) {
+    lastScheduleTrigger.start = dateNow;
+    await runScheduledStart();
+  }
+
+  if (scheduleSettings.stopTime === timeNow && lastScheduleTrigger.stop !== dateNow) {
+    lastScheduleTrigger.stop = dateNow;
+    await runScheduledStop();
+  }
 }
 
 async function syncAutoTargets() {
@@ -323,13 +419,30 @@ runFlowBtn.addEventListener('click', async () => {
   await refreshData();
 });
 
+scheduleEnabledEl.addEventListener('change', async () => {
+  await saveScheduleSettings();
+});
+
+scheduleStartTimeEl.addEventListener('change', async () => {
+  await saveScheduleSettings();
+});
+
+scheduleStopTimeEl.addEventListener('change', async () => {
+  await saveScheduleSettings();
+});
+
 async function init() {
   await loadAreaPreferences();
+  await loadScheduleSettings();
   renderAreaList();
+  hydrateScheduleSettingsUi();
   await syncAutoTargets();
   await refreshData();
   await refreshAreas();
   window.setInterval(refreshData, 1000);
+  window.setInterval(() => {
+    checkScheduleTick();
+  }, 1000);
 }
 
 init();

@@ -48,6 +48,9 @@
     - If keyword is provided, use keyword match first.
     - If keyword is empty, use checked checklist targets.
     - If both are empty, all areas are candidates.
+- Schedule controls
+  - Added daily schedule settings in popup.
+  - Can auto-start and auto-stop by `HH:MM:SS` time.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`
   - `CLICK_REFRESH_ONCE`, `CLICK_PANEL_BY_TEXT`, `CLICK_REFRESH_AND_PANEL_BY_TEXT`
