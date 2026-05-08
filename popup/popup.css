@@ -45,6 +45,19 @@ button:disabled {
   margin-top: 12px;
 }
 
+.manual-actions {
+  margin-top: 12px;
+}
+
+.manual-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.manual {
+  background: #0d6efd;
+}
+
 .log-title {
   margin-bottom: 6px;
   font-size: 12px;

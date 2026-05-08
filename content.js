@@ -24,6 +24,26 @@
     return null;
   }
 
+  function findVip2PanelButton() {
+    const panelCandidates = document.querySelectorAll('div.v-expansion-panel.filter-processed[value="3"]');
+    for (const panel of panelCandidates) {
+      const text = (panel.textContent || '').replace(/\s+/g, ' ');
+      if (text.includes('2F VIP2（座席）')) {
+        return panel.querySelector('button.v-expansion-panel-header');
+      }
+    }
+
+    const fallbackHeaders = document.querySelectorAll('button.v-expansion-panel-header');
+    for (const header of fallbackHeaders) {
+      const text = (header.textContent || '').replace(/\s+/g, ' ');
+      if (text.includes('2F VIP2（座席）')) {
+        return header;
+      }
+    }
+
+    return null;
+  }
+
   function tick() {
     if (!running) {
       return;
@@ -51,6 +71,30 @@
     pushLog(`已啟動，每 ${INTERVAL_MS / 1000} 秒執行一次`);
     tick();
     console.log('[ticket_plus_bot] auto click started');
+  }
+
+  function clickRefreshOnce() {
+    const target = findRefreshButton();
+    if (!target) {
+      pushLog('手動點擊失敗：未找到「更新票數」按鈕');
+      return { ok: false, error: 'REFRESH_BUTTON_NOT_FOUND' };
+    }
+
+    target.click();
+    pushLog('手動點擊成功：「更新票數」');
+    return { ok: true };
+  }
+
+  function clickVip2Panel() {
+    const target = findVip2PanelButton();
+    if (!target) {
+      pushLog('手動點擊失敗：未找到「2F VIP2（座席）」區塊');
+      return { ok: false, error: 'VIP2_PANEL_NOT_FOUND' };
+    }
+
+    target.click();
+    pushLog('手動點擊成功：「2F VIP2（座席）」區塊');
+    return { ok: true };
   }
 
   function stop() {
@@ -93,6 +137,33 @@
 
     if (message.type === 'GET_BOT_LOGS') {
       sendResponse({ ok: true, logs });
+      return;
+    }
+
+    if (message.type === 'CLICK_REFRESH_ONCE') {
+      sendResponse(clickRefreshOnce());
+      return;
+    }
+
+    if (message.type === 'CLICK_VIP2_PANEL') {
+      sendResponse(clickVip2Panel());
+      return;
+    }
+
+    if (message.type === 'CLICK_REFRESH_AND_VIP2') {
+      const refreshResult = clickRefreshOnce();
+      if (!refreshResult.ok) {
+        sendResponse({ ok: false, step: 'refresh', error: refreshResult.error });
+        return;
+      }
+
+      const vip2Result = clickVip2Panel();
+      if (!vip2Result.ok) {
+        sendResponse({ ok: false, step: 'vip2', error: vip2Result.error });
+        return;
+      }
+
+      sendResponse({ ok: true });
     }
   });
 

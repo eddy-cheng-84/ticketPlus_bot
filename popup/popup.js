@@ -1,6 +1,9 @@
 ﻿const statusEl = document.getElementById('status');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
+const refreshOnceBtn = document.getElementById('refreshOnceBtn');
+const vip2Btn = document.getElementById('vip2Btn');
+const comboBtn = document.getElementById('comboBtn');
 const logBox = document.getElementById('logBox');
 
 async function getActiveTabId() {
@@ -74,6 +77,36 @@ stopBtn.addEventListener('click', async () => {
   const result = await sendToActiveTab({ type: 'STOP_BOT' });
   if (!result || !result.ok) {
     render(false, 10000, '暫停失敗');
+    return;
+  }
+
+  await refreshData();
+});
+
+refreshOnceBtn.addEventListener('click', async () => {
+  const result = await sendToActiveTab({ type: 'CLICK_REFRESH_ONCE' });
+  if (!result || !result.ok) {
+    render(false, 10000, '點更新票數失敗');
+    return;
+  }
+
+  await refreshData();
+});
+
+vip2Btn.addEventListener('click', async () => {
+  const result = await sendToActiveTab({ type: 'CLICK_VIP2_PANEL' });
+  if (!result || !result.ok) {
+    render(false, 10000, '點 2F VIP2 失敗');
+    return;
+  }
+
+  await refreshData();
+});
+
+comboBtn.addEventListener('click', async () => {
+  const result = await sendToActiveTab({ type: 'CLICK_REFRESH_AND_VIP2' });
+  if (!result || !result.ok) {
+    render(false, 10000, '一鍵操作失敗');
     return;
   }
 
