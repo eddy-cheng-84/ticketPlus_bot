@@ -49,6 +49,22 @@ button:disabled {
   margin-top: 12px;
 }
 
+.keyword-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+.keyword-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 7px 8px;
+}
+
 .manual-grid {
   display: grid;
   gap: 8px;

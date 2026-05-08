@@ -24,19 +24,28 @@
     return null;
   }
 
-  function findVip2PanelButton() {
-    const panelCandidates = document.querySelectorAll('div.v-expansion-panel.filter-processed[value="3"]');
+  function normalizeText(text) {
+    return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function findPanelButtonByText(keyword) {
+    const normalizedKeyword = normalizeText(keyword);
+    if (!normalizedKeyword) {
+      return null;
+    }
+
+    const panelCandidates = document.querySelectorAll('div.v-expansion-panel.filter-processed');
     for (const panel of panelCandidates) {
-      const text = (panel.textContent || '').replace(/\s+/g, ' ');
-      if (text.includes('2F VIP2（座席）')) {
+      const text = normalizeText(panel.textContent || '');
+      if (text.includes(normalizedKeyword)) {
         return panel.querySelector('button.v-expansion-panel-header');
       }
     }
 
     const fallbackHeaders = document.querySelectorAll('button.v-expansion-panel-header');
     for (const header of fallbackHeaders) {
-      const text = (header.textContent || '').replace(/\s+/g, ' ');
-      if (text.includes('2F VIP2（座席）')) {
+      const text = normalizeText(header.textContent || '');
+      if (text.includes(normalizedKeyword)) {
         return header;
       }
     }
@@ -85,15 +94,15 @@
     return { ok: true };
   }
 
-  function clickVip2Panel() {
-    const target = findVip2PanelButton();
+  function clickPanelByText(keyword) {
+    const target = findPanelButtonByText(keyword);
     if (!target) {
-      pushLog('手動點擊失敗：未找到「2F VIP2（座席）」區塊');
-      return { ok: false, error: 'VIP2_PANEL_NOT_FOUND' };
+      pushLog(`手動點擊失敗：未找到「${keyword}」區塊`);
+      return { ok: false, error: 'PANEL_NOT_FOUND' };
     }
 
     target.click();
-    pushLog('手動點擊成功：「2F VIP2（座席）」區塊');
+    pushLog(`手動點擊成功：「${keyword}」區塊`);
     return { ok: true };
   }
 
@@ -145,21 +154,31 @@
       return;
     }
 
-    if (message.type === 'CLICK_VIP2_PANEL') {
-      sendResponse(clickVip2Panel());
+    if (message.type === 'CLICK_PANEL_BY_TEXT') {
+      const keyword = normalizeText(message.text || '');
+      if (!keyword) {
+        sendResponse({ ok: false, error: 'EMPTY_KEYWORD' });
+        return;
+      }
+      sendResponse(clickPanelByText(keyword));
       return;
     }
 
-    if (message.type === 'CLICK_REFRESH_AND_VIP2') {
+    if (message.type === 'CLICK_REFRESH_AND_PANEL_BY_TEXT') {
+      const keyword = normalizeText(message.text || '');
+      if (!keyword) {
+        sendResponse({ ok: false, error: 'EMPTY_KEYWORD' });
+        return;
+      }
       const refreshResult = clickRefreshOnce();
       if (!refreshResult.ok) {
         sendResponse({ ok: false, step: 'refresh', error: refreshResult.error });
         return;
       }
 
-      const vip2Result = clickVip2Panel();
-      if (!vip2Result.ok) {
-        sendResponse({ ok: false, step: 'vip2', error: vip2Result.error });
+      const panelResult = clickPanelByText(keyword);
+      if (!panelResult.ok) {
+        sendResponse({ ok: false, step: 'panel', error: panelResult.error });
         return;
       }
 

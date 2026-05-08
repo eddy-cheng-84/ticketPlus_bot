@@ -4,6 +4,7 @@ const stopBtn = document.getElementById('stopBtn');
 const refreshOnceBtn = document.getElementById('refreshOnceBtn');
 const vip2Btn = document.getElementById('vip2Btn');
 const comboBtn = document.getElementById('comboBtn');
+const areaKeywordInput = document.getElementById('areaKeyword');
 const logBox = document.getElementById('logBox');
 
 async function getActiveTabId() {
@@ -46,6 +47,11 @@ function renderLogs(logs) {
 
   logBox.textContent = logs.slice(-80).join('\n');
   logBox.scrollTop = logBox.scrollHeight;
+}
+
+function getAreaKeyword() {
+  const raw = (areaKeywordInput?.value || '').trim();
+  return raw || '2F VIP2（座席）';
 }
 
 async function refreshData() {
@@ -94,9 +100,12 @@ refreshOnceBtn.addEventListener('click', async () => {
 });
 
 vip2Btn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({ type: 'CLICK_VIP2_PANEL' });
+  const result = await sendToActiveTab({
+    type: 'CLICK_PANEL_BY_TEXT',
+    text: getAreaKeyword()
+  });
   if (!result || !result.ok) {
-    render(false, 10000, '點 2F VIP2 失敗');
+    render(false, 10000, '點票區失敗');
     return;
   }
 
@@ -104,7 +113,10 @@ vip2Btn.addEventListener('click', async () => {
 });
 
 comboBtn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({ type: 'CLICK_REFRESH_AND_VIP2' });
+  const result = await sendToActiveTab({
+    type: 'CLICK_REFRESH_AND_PANEL_BY_TEXT',
+    text: getAreaKeyword()
+  });
   if (!result || !result.ok) {
     render(false, 10000, '一鍵操作失敗');
     return;
