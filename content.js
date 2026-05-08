@@ -2,6 +2,8 @@
   const INTERVAL_MS = 10000;
   const MAX_LOGS = 200;
   const LOOP_RETRY_DELAY_MS = 500;
+  const PLUS_CLICK_DELAY_MS = 50;
+  const AFTER_PLUS_BEFORE_NEXT_MS = 100;
 
   let running = false;
   let timerId = null;
@@ -148,8 +150,7 @@
         await sleep(LOOP_RETRY_DELAY_MS);
         continue;
       }
-      pushLog('流程完成，0.5 秒後重跑流程');
-      await sleep(LOOP_RETRY_DELAY_MS);
+      pushLog('流程完成，進入下一輪');
     }
   }
 
@@ -223,7 +224,7 @@
     return { ok: true };
   }
 
-  function clickPlusTimes(count) {
+  async function clickPlusTimes(count) {
     const normalizedCount = Number.isFinite(count) ? count : 1;
     const times = Math.min(4, Math.max(0, normalizedCount));
     if (times === 0) {
@@ -234,6 +235,9 @@
       const result = clickPlusOnActivePanel();
       if (!result.ok) {
         return { ok: false, error: result.error, clicked: i };
+      }
+      if (i < times - 1) {
+        await sleep(PLUS_CLICK_DELAY_MS);
       }
     }
     pushLog(`手動點擊成功：已點擊 + ${times} 次`);
@@ -356,14 +360,15 @@
         await sleep(areaToPlusDelayMs);
       }
 
-      const plusResult = clickPlusTimes(plusCount);
+      const plusResult = await clickPlusTimes(plusCount);
       if (plusResult.ok) {
         if (runtimeOptions.includeNextStep) {
+          await sleep(AFTER_PLUS_BEFORE_NEXT_MS);
           const nextResult = clickNextStepButton();
           if (!nextResult.ok) {
             return { ok: false, step: 'next_step', error: nextResult.error };
           }
-          await sleep(500);
+          await sleep(refreshToAreaDelayMs);
         }
         pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +' + (runtimeOptions.includeNextStep ? ' -> 下一步' : ''));
         return {

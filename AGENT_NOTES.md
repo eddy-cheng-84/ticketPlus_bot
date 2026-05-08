@@ -53,7 +53,9 @@
     - If all desired targets are `剩餘 0`, refreshes and retries detection automatically.
   - Start/Stop now runs flow-loop mode:
     - `Start` triggers full flow with `下一步`.
-    - After each full run, waits 0.5s and loops again.
+    - `+` multi-click uses 50ms gap between each click.
+    - After final `+`, waits 100ms then clicks `下一步`.
+    - After `下一步`, waits `重新整理時秒數` then loops next round.
 - Schedule controls
   - Added daily schedule settings in popup.
   - Can auto-start and auto-stop by `HH:MM:SS` time input (`type="time"` with `step="1"`).
