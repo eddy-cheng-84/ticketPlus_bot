@@ -10,6 +10,7 @@ const nextStepBtn = document.getElementById('nextStepBtn');
 const runFlowBtn = document.getElementById('runFlowBtn');
 const areaKeywordInput = document.getElementById('areaKeyword');
 const ticketCountInput = document.getElementById('ticketCount');
+const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
 const areaOrderModeEl = document.getElementById('areaOrderMode');
 const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
@@ -82,6 +83,14 @@ function getTicketCount() {
     return 1;
   }
   return parsed;
+}
+
+function getAreaToPlusDelayMs() {
+  const parsed = Number.parseFloat(areaToPlusDelaySecInput?.value || '0');
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return Math.round(parsed * 1000);
 }
 
 async function loadAreaPreferences() {
@@ -333,7 +342,8 @@ runFlowBtn.addEventListener('click', async () => {
     keyword: getAreaKeyword(),
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
-    plusCount: getTicketCount()
+    plusCount: getTicketCount(),
+    areaToPlusDelayMs: getAreaToPlusDelayMs()
   });
   if (!result || !result.ok) {
     render(false, 10000, '一鍵流程失敗');

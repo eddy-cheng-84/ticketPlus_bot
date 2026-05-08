@@ -269,9 +269,17 @@
     return { ok: false, error: 'NEXT_STEP_NOT_FOUND' };
   }
 
-  function runPurchaseFlow(options = {}) {
+  function sleep(ms) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  async function runPurchaseFlow(options = {}) {
     const plusCountParsed = Number.parseInt(String(options.plusCount || '1'), 10);
     const plusCount = Number.isFinite(plusCountParsed) && plusCountParsed > 0 ? plusCountParsed : 1;
+    const delayParsed = Number.parseInt(String(options.areaToPlusDelayMs || '0'), 10);
+    const areaToPlusDelayMs = Number.isFinite(delayParsed) && delayParsed > 0 ? delayParsed : 0;
 
     const refreshResult = clickRefreshOnce();
     if (!refreshResult.ok) {
@@ -287,6 +295,11 @@
       return { ok: false, step: 'panel', error: panelResult.error };
     }
 
+    if (areaToPlusDelayMs > 0) {
+      pushLog(`流程等待：選區後延遲 ${areaToPlusDelayMs}ms`);
+      await sleep(areaToPlusDelayMs);
+    }
+
     const plusResult = clickPlusTimes(plusCount);
     if (!plusResult.ok) {
       return { ok: false, step: 'plus', error: plusResult.error };
@@ -298,7 +311,7 @@
     }
 
     pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 + -> 下一步');
-    return { ok: true, matched: panelResult.matched, plusCount };
+    return { ok: true, matched: panelResult.matched, plusCount, areaToPlusDelayMs };
   }
 
   function stop() {
@@ -406,7 +419,10 @@
     }
 
     if (message.type === 'RUN_PURCHASE_FLOW') {
-      sendResponse(runPurchaseFlow(message));
+      runPurchaseFlow(message).then((result) => {
+        sendResponse(result);
+      });
+      return true;
     }
   });
 
