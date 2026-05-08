@@ -11,6 +11,7 @@ const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
 const areaOrderModeEl = document.getElementById('areaOrderMode');
 const scheduleStartTimeEl = document.getElementById('scheduleStartTime');
 const scheduleStopTimeEl = document.getElementById('scheduleStopTime');
+const autoScrollLogEl = document.getElementById('autoScrollLog');
 const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
 
@@ -132,7 +133,9 @@ function renderLogs(logs) {
   }
 
   logBox.textContent = logs.slice(-400).join('\n');
-  logBox.scrollTop = logBox.scrollHeight;
+  if (!autoScrollLogEl || autoScrollLogEl.checked) {
+    logBox.scrollTop = logBox.scrollHeight;
+  }
 }
 
 async function loadAreaPreferences() {
