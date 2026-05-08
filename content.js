@@ -1,6 +1,7 @@
 ﻿(() => {
   const INTERVAL_MS = 10000;
   const MAX_LOGS = 200;
+  const MAX_FLOW_ATTEMPTS = 80;
 
   let running = false;
   let timerId = null;
@@ -287,46 +288,60 @@
     const delayParsed = Number.parseInt(String(options.areaToPlusDelayMs || '0'), 10);
     const areaToPlusDelayMs = Number.isFinite(delayParsed) && delayParsed > 0 ? delayParsed : 0;
     const refreshDelayParsed = Number.parseInt(String(options.refreshToAreaDelayMs || '0'), 10);
-    const refreshToAreaDelayMs =
-      Number.isFinite(refreshDelayParsed) && refreshDelayParsed > 0 ? refreshDelayParsed : 0;
+    const refreshToAreaDelayMs = Number.isFinite(refreshDelayParsed) && refreshDelayParsed > 0
+      ? refreshDelayParsed
+      : 1000;
 
-    const refreshResult = clickRefreshOnce();
-    if (!refreshResult.ok) {
-      return { ok: false, step: 'refresh', error: refreshResult.error };
-    }
+    let attempt = 0;
+    let panelResult = null;
+    while (attempt < MAX_FLOW_ATTEMPTS) {
+      attempt += 1;
+      const refreshResult = clickRefreshOnce();
+      if (!refreshResult.ok) {
+        return { ok: false, step: 'refresh', error: refreshResult.error };
+      }
 
-    if (refreshToAreaDelayMs > 0) {
-      pushLog(`流程等待：更新票數後延遲 ${refreshToAreaDelayMs}ms`);
-      await sleep(refreshToAreaDelayMs);
-    }
+      if (refreshToAreaDelayMs > 0) {
+        pushLog(`流程等待：重新整理時秒數 ${refreshToAreaDelayMs}ms`);
+        await sleep(refreshToAreaDelayMs);
+      }
 
-    const panelResult = selectPanelForFlow(
-      options.keyword || '',
-      options.selectedTargets || [],
-      options.orderMode || 'top_to_bottom'
-    );
-    if (!panelResult.ok) {
-      return { ok: false, step: 'panel', error: panelResult.error };
-    }
+      panelResult = selectPanelForFlow(
+        options.keyword || '',
+        options.selectedTargets || [],
+        options.orderMode || 'top_to_bottom'
+      );
+      if (!panelResult.ok) {
+        return { ok: false, step: 'panel', error: panelResult.error };
+      }
 
-    if (areaToPlusDelayMs > 0) {
-      pushLog(`流程等待：選區後延遲 ${areaToPlusDelayMs}ms`);
-      await sleep(areaToPlusDelayMs);
-    }
+      if (areaToPlusDelayMs > 0) {
+        pushLog(`流程等待：選區後延遲 ${areaToPlusDelayMs}ms`);
+        await sleep(areaToPlusDelayMs);
+      }
 
-    const plusResult = clickPlusTimes(plusCount);
-    if (!plusResult.ok) {
+      const plusResult = clickPlusTimes(plusCount);
+      if (plusResult.ok) {
+        pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +');
+        return {
+          ok: true,
+          matched: panelResult.matched,
+          plusCount,
+          refreshToAreaDelayMs,
+          areaToPlusDelayMs,
+          attempt
+        };
+      }
+
+      if (plusResult.error === 'PLUS_ICON_NOT_FOUND' || plusResult.error === 'PLUS_BUTTON_NOT_FOUND') {
+        pushLog(`流程重試：未找到 +，將重新整理後再試（第 ${attempt} 次）`);
+        continue;
+      }
+
       return { ok: false, step: 'plus', error: plusResult.error };
     }
 
-    pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +');
-    return {
-      ok: true,
-      matched: panelResult.matched,
-      plusCount,
-      refreshToAreaDelayMs,
-      areaToPlusDelayMs
-    };
+    return { ok: false, step: 'plus', error: 'PLUS_NOT_FOUND_AFTER_RETRIES' };
   }
 
   function stop() {
