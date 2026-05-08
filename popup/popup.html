@@ -16,7 +16,11 @@
       </div>
       <section class="manual-actions">
         <div class="log-title">Manual</div>
-        <label for="areaKeyword" class="keyword-label">票區關鍵字</label>
+        <div class="area-actions">
+          <button id="reloadAreasBtn" class="manual">讀取票區清單</button>
+        </div>
+        <div id="areaList" class="area-list">尚未讀取票區</div>
+        <label for="areaKeyword" class="keyword-label">單次手動關鍵字</label>
         <input id="areaKeyword" class="keyword-input" type="text" value="2F VIP2（座席）" />
         <div class="manual-grid">
           <button id="refreshOnceBtn" class="manual">點更新票數</button>

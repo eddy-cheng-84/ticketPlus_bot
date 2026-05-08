@@ -4,6 +4,7 @@
 
   let running = false;
   let timerId = null;
+  let autoTargets = [];
   const logs = [];
 
   function pushLog(message) {
@@ -53,31 +54,67 @@
     return null;
   }
 
+  function collectPanelAreas() {
+    const headers = document.querySelectorAll('button.v-expansion-panel-header');
+    const seen = new Set();
+    const areas = [];
+    for (const header of headers) {
+      const text = normalizeText(header.textContent || '');
+      if (!text || seen.has(text)) {
+        continue;
+      }
+      seen.add(text);
+      areas.push(text);
+    }
+    return areas;
+  }
+
+  function clickFirstAvailableAutoTarget() {
+    if (!Array.isArray(autoTargets) || autoTargets.length === 0) {
+      return { ok: false, error: 'NO_AUTO_TARGETS' };
+    }
+
+    for (const keyword of autoTargets) {
+      const target = findPanelButtonByText(keyword);
+      if (!target) {
+        continue;
+      }
+      target.click();
+      pushLog(`自動點擊成功（優先順序）：「${keyword}」`);
+      return { ok: true, matched: keyword };
+    }
+
+    pushLog('自動點擊失敗：未找到任何已勾選票區');
+    return { ok: false, error: 'NO_MATCHED_PANEL' };
+  }
+
   function tick() {
     if (!running) {
       return;
     }
 
-    const target = findRefreshButton();
-    if (target) {
-      target.click();
-      pushLog('偵測到「更新票數」，已點擊');
-      console.log('[ticket_plus_bot] clicked 更新票數 button');
+    const refreshResult = clickRefreshOnce();
+    if (!refreshResult.ok) {
       return;
     }
 
-    pushLog('未找到「更新票數」按鈕');
+    if (autoTargets.length > 0) {
+      clickFirstAvailableAutoTarget();
+    }
   }
 
-  function start() {
+  function start(targets = []) {
     if (running) {
       pushLog('啟動請求略過：目前已在執行');
       return;
     }
 
+    autoTargets = Array.isArray(targets)
+      ? targets.map((item) => normalizeText(item)).filter(Boolean)
+      : [];
     running = true;
     timerId = window.setInterval(tick, INTERVAL_MS);
-    pushLog(`已啟動，每 ${INTERVAL_MS / 1000} 秒執行一次`);
+    pushLog(`已啟動，每 ${INTERVAL_MS / 1000} 秒執行一次，目標數：${autoTargets.length}`);
     tick();
     console.log('[ticket_plus_bot] auto click started');
   }
@@ -128,8 +165,8 @@
     }
 
     if (message.type === 'START_BOT') {
-      start();
-      sendResponse({ ok: true, running: true });
+      start(message.targets);
+      sendResponse({ ok: true, running: true, targets: autoTargets });
       return;
     }
 
@@ -140,7 +177,7 @@
     }
 
     if (message.type === 'GET_BOT_STATUS') {
-      sendResponse({ ok: true, running, intervalMs: INTERVAL_MS });
+      sendResponse({ ok: true, running, intervalMs: INTERVAL_MS, targets: autoTargets });
       return;
     }
 
@@ -183,6 +220,20 @@
       }
 
       sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === 'GET_PANEL_AREAS') {
+      sendResponse({ ok: true, areas: collectPanelAreas() });
+      return;
+    }
+
+    if (message.type === 'SET_AUTO_TARGETS') {
+      autoTargets = Array.isArray(message.targets)
+        ? message.targets.map((item) => normalizeText(item)).filter(Boolean)
+        : [];
+      pushLog(`已更新自動目標，共 ${autoTargets.length} 個`);
+      sendResponse({ ok: true, targets: autoTargets });
     }
   });
 

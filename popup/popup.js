@@ -1,11 +1,16 @@
 ﻿const statusEl = document.getElementById('status');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
+const reloadAreasBtn = document.getElementById('reloadAreasBtn');
 const refreshOnceBtn = document.getElementById('refreshOnceBtn');
 const vip2Btn = document.getElementById('vip2Btn');
 const comboBtn = document.getElementById('comboBtn');
 const areaKeywordInput = document.getElementById('areaKeyword');
+const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
+
+const STORAGE_KEY = 'area_preferences_v1';
+let areaPreferences = [];
 
 async function getActiveTabId() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -25,6 +30,14 @@ async function sendToActiveTab(message) {
   }
 }
 
+function normalizeText(text) {
+  return (text || '').replace(/\s+/g, ' ').trim();
+}
+
+function getSelectedTargets() {
+  return areaPreferences.filter((item) => item.selected).map((item) => item.name);
+}
+
 function render(running, intervalMs, errorText = '') {
   if (errorText) {
     statusEl.textContent = `狀態: ${errorText}`;
@@ -34,7 +47,10 @@ function render(running, intervalMs, errorText = '') {
   }
 
   const sec = intervalMs ? Math.round(intervalMs / 1000) : 10;
-  statusEl.textContent = running ? `狀態: 已啟動（${sec}秒/次）` : `狀態: 已暫停（${sec}秒/次）`;
+  const selectedCount = getSelectedTargets().length;
+  statusEl.textContent = running
+    ? `狀態: 已啟動（${sec}秒/次，目標${selectedCount}）`
+    : `狀態: 已暫停（${sec}秒/次，目標${selectedCount}）`;
   startBtn.disabled = running;
   stopBtn.disabled = !running;
 }
@@ -54,6 +70,151 @@ function getAreaKeyword() {
   return raw || '2F VIP2（座席）';
 }
 
+async function loadAreaPreferences() {
+  const result = await chrome.storage.local.get(STORAGE_KEY);
+  const saved = result?.[STORAGE_KEY];
+  if (!Array.isArray(saved)) {
+    areaPreferences = [];
+    return;
+  }
+
+  areaPreferences = saved
+    .map((item) => ({
+      name: normalizeText(item?.name || ''),
+      selected: Boolean(item?.selected)
+    }))
+    .filter((item) => Boolean(item.name));
+}
+
+async function saveAreaPreferences() {
+  await chrome.storage.local.set({ [STORAGE_KEY]: areaPreferences });
+}
+
+async function syncAutoTargets() {
+  const targets = getSelectedTargets();
+  await sendToActiveTab({ type: 'SET_AUTO_TARGETS', targets });
+}
+
+function moveArea(index, offset) {
+  const nextIndex = index + offset;
+  if (nextIndex < 0 || nextIndex >= areaPreferences.length) {
+    return;
+  }
+
+  const swapped = [...areaPreferences];
+  const current = swapped[index];
+  swapped[index] = swapped[nextIndex];
+  swapped[nextIndex] = current;
+  areaPreferences = swapped;
+}
+
+function createAreaItemElement(item, index) {
+  const row = document.createElement('div');
+  row.className = 'area-item';
+
+  const left = document.createElement('label');
+  left.className = 'area-left';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = item.selected;
+  checkbox.addEventListener('change', async () => {
+    areaPreferences[index].selected = checkbox.checked;
+    await saveAreaPreferences();
+    await syncAutoTargets();
+    render(false, 10000);
+  });
+
+  const name = document.createElement('span');
+  name.className = 'area-name';
+  name.textContent = item.name;
+
+  left.appendChild(checkbox);
+  left.appendChild(name);
+
+  const orderWrap = document.createElement('div');
+  orderWrap.className = 'area-order';
+
+  const upBtn = document.createElement('button');
+  upBtn.className = 'order-btn';
+  upBtn.textContent = '上移';
+  upBtn.disabled = index === 0;
+  upBtn.addEventListener('click', async () => {
+    moveArea(index, -1);
+    await saveAreaPreferences();
+    await syncAutoTargets();
+    renderAreaList();
+  });
+
+  const downBtn = document.createElement('button');
+  downBtn.className = 'order-btn';
+  downBtn.textContent = '下移';
+  downBtn.disabled = index === areaPreferences.length - 1;
+  downBtn.addEventListener('click', async () => {
+    moveArea(index, 1);
+    await saveAreaPreferences();
+    await syncAutoTargets();
+    renderAreaList();
+  });
+
+  orderWrap.appendChild(upBtn);
+  orderWrap.appendChild(downBtn);
+
+  row.appendChild(left);
+  row.appendChild(orderWrap);
+
+  return row;
+}
+
+function renderAreaList() {
+  areaListEl.innerHTML = '';
+
+  if (!Array.isArray(areaPreferences) || areaPreferences.length === 0) {
+    areaListEl.textContent = '尚未讀取票區';
+    return;
+  }
+
+  for (let i = 0; i < areaPreferences.length; i += 1) {
+    areaListEl.appendChild(createAreaItemElement(areaPreferences[i], i));
+  }
+}
+
+function mergeAreaPreferences(areas) {
+  const normalized = areas.map((name) => normalizeText(name)).filter(Boolean);
+  const unique = [...new Set(normalized)];
+  const oldMap = new Map(areaPreferences.map((item) => [item.name, item]));
+
+  const next = [];
+  for (const name of areaPreferences.map((item) => item.name)) {
+    if (unique.includes(name)) {
+      const old = oldMap.get(name);
+      next.push({ name, selected: Boolean(old?.selected) });
+    }
+  }
+
+  for (const name of unique) {
+    if (!next.find((item) => item.name === name)) {
+      next.push({ name, selected: false });
+    }
+  }
+
+  areaPreferences = next;
+}
+
+async function refreshAreas() {
+  const result = await sendToActiveTab({ type: 'GET_PANEL_AREAS' });
+  if (!result || !result.ok || !Array.isArray(result.areas)) {
+    areaListEl.textContent = '讀取票區失敗（請先在目標頁重新整理）';
+    return;
+  }
+
+  mergeAreaPreferences(result.areas);
+  await saveAreaPreferences();
+  await syncAutoTargets();
+  renderAreaList();
+  await refreshData();
+}
+
 async function refreshData() {
   const statusResult = await sendToActiveTab({ type: 'GET_BOT_STATUS' });
   if (!statusResult || !statusResult.ok) {
@@ -70,7 +231,10 @@ async function refreshData() {
 }
 
 startBtn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({ type: 'START_BOT' });
+  const result = await sendToActiveTab({
+    type: 'START_BOT',
+    targets: getSelectedTargets()
+  });
   if (!result || !result.ok) {
     render(false, 10000, '啟動失敗');
     return;
@@ -87,6 +251,10 @@ stopBtn.addEventListener('click', async () => {
   }
 
   await refreshData();
+});
+
+reloadAreasBtn.addEventListener('click', async () => {
+  await refreshAreas();
 });
 
 refreshOnceBtn.addEventListener('click', async () => {
@@ -125,5 +293,13 @@ comboBtn.addEventListener('click', async () => {
   await refreshData();
 });
 
-refreshData();
-window.setInterval(refreshData, 1000);
+async function init() {
+  await loadAreaPreferences();
+  renderAreaList();
+  await syncAutoTargets();
+  await refreshData();
+  await refreshAreas();
+  window.setInterval(refreshData, 1000);
+}
+
+init();
