@@ -15,6 +15,7 @@
     startTime: '11:00:01',
     stopTime: '11:01:00',
     options: {},
+    lastTickSec: null,
     lastStartDate: '',
     lastStopDate: ''
   };
@@ -465,18 +466,21 @@
     const startSec = timeHmsToSeconds(scheduleState.startTime);
     const stopSec = timeHmsToSeconds(scheduleState.stopTime);
     const dateNow = getCurrentDateYmd();
+    const prevSec = Number.isFinite(scheduleState.lastTickSec) ? scheduleState.lastTickSec : nowSec;
 
-    if (startSec >= 0 && nowSec >= startSec && scheduleState.lastStartDate !== dateNow) {
+    if (startSec >= 0 && prevSec < startSec && nowSec >= startSec && scheduleState.lastStartDate !== dateNow) {
       scheduleState.lastStartDate = dateNow;
       start(scheduleState.options || {});
       pushLog(`排程觸發：自動啟動 ${scheduleState.startTime}`);
     }
 
-    if (stopSec >= 0 && nowSec >= stopSec && scheduleState.lastStopDate !== dateNow) {
+    if (stopSec >= 0 && prevSec < stopSec && nowSec >= stopSec && scheduleState.lastStopDate !== dateNow) {
       scheduleState.lastStopDate = dateNow;
       stop();
       pushLog(`排程觸發：自動暫停 ${scheduleState.stopTime}`);
     }
+
+    scheduleState.lastTickSec = nowSec;
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -599,6 +603,7 @@
         refreshToAreaDelayMs: message.refreshToAreaDelayMs,
         areaToPlusDelayMs: message.areaToPlusDelayMs
       };
+      scheduleState.lastTickSec = timeHmsToSeconds(getCurrentTimeHms());
       pushLog(`排程已啟用：${startTime} 啟動 / ${stopTime} 暫停`);
       sendResponse({ ok: true });
       return;
@@ -606,6 +611,7 @@
 
     if (message.type === 'STOP_SCHEDULE') {
       scheduleState.enabled = false;
+      scheduleState.lastTickSec = null;
       pushLog('排程已停止');
       sendResponse({ ok: true });
     }
