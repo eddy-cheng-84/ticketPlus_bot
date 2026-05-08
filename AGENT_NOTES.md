@@ -44,7 +44,7 @@
   - Added `幾張票` setting with hard limit `0~4`.
   - Added `重新整理時秒數` setting.
   - If `+` is not found after area selection, flow waits `重新整理時秒數`, refreshes, and retries.
-  - Added `選區後延遲秒數` setting for waiting before `+` clicks.
+  - Added `選區後延遲幾秒按+` setting for waiting before `+` clicks.
   - Added `選擇順序` setting: `top to bottom`, `bottom to top`, `middle`, `random`.
   - Area fallback logic:
     - If keyword is provided, use keyword match first.
