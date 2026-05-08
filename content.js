@@ -311,12 +311,7 @@
       return { ok: false, step: 'plus', error: plusResult.error };
     }
 
-    const nextResult = clickNextStepButton();
-    if (!nextResult.ok) {
-      return { ok: false, step: 'next_step', error: nextResult.error };
-    }
-
-    pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 + -> 下一步');
+    pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +');
     return { ok: true, matched: panelResult.matched, plusCount, areaToPlusDelayMs };
   }
 

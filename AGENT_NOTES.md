@@ -36,11 +36,11 @@
 - Seat area discovery and selection
   - Read all panel headers from page and show checklist in popup.
   - Multi-select seat areas for auto targeting.
-  - Drag-and-drop sorting for target priority.
+  - Button-based sorting (`上移` / `下移`) for target priority.
   - Persist checklist + order using `chrome.storage.local`.
 - One-click purchase flow
   - Added `一鍵執行流程` button.
-  - Flow steps: `更新票數 -> 選票區 -> 點 + -> 下一步`.
+  - Flow steps: `更新票數 -> 選票區 -> 點 +`.
   - Added `幾張票` setting with hard limit `0~4`.
   - Added `選區後延遲秒數` setting for waiting before `+` clicks.
   - Added `選擇順序` setting: `top to bottom`, `bottom to top`, `middle`, `random`.

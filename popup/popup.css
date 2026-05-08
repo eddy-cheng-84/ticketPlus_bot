@@ -86,20 +86,15 @@ button:disabled {
 
 .area-item {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr auto;
   gap: 6px;
   align-items: center;
   padding: 4px 0;
   border-bottom: 1px solid #eee;
-  cursor: move;
 }
 
 .area-item:last-child {
   border-bottom: none;
-}
-
-.area-item.dragging {
-  opacity: 0.45;
 }
 
 .area-left {
@@ -111,6 +106,17 @@ button:disabled {
 .area-name {
   line-height: 1.35;
   word-break: break-word;
+}
+
+.area-order {
+  display: flex;
+  gap: 4px;
+}
+
+.order-btn {
+  background: #6c757d;
+  font-size: 11px;
+  padding: 5px 8px;
 }
 
 .manual-grid {

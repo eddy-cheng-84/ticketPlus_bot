@@ -17,7 +17,6 @@ const logBox = document.getElementById('logBox');
 
 const STORAGE_KEY = 'area_preferences_v1';
 let areaPreferences = [];
-let draggingIndex = -1;
 
 async function getActiveTabId() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -118,52 +117,21 @@ async function syncAutoTargets() {
   await sendToActiveTab({ type: 'SET_AUTO_TARGETS', targets });
 }
 
-function moveAreaByDrag(fromIndex, toIndex) {
-  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+function moveArea(index, offset) {
+  const nextIndex = index + offset;
+  if (nextIndex < 0 || nextIndex >= areaPreferences.length) {
     return;
   }
-  if (fromIndex >= areaPreferences.length || toIndex >= areaPreferences.length) {
-    return;
-  }
-
-  const cloned = [...areaPreferences];
-  const [moved] = cloned.splice(fromIndex, 1);
-  cloned.splice(toIndex, 0, moved);
-  areaPreferences = cloned;
+  const swapped = [...areaPreferences];
+  const current = swapped[index];
+  swapped[index] = swapped[nextIndex];
+  swapped[nextIndex] = current;
+  areaPreferences = swapped;
 }
 
 function createAreaItemElement(item, index) {
   const row = document.createElement('div');
   row.className = 'area-item';
-  row.draggable = true;
-
-  row.addEventListener('dragstart', () => {
-    draggingIndex = index;
-    row.classList.add('dragging');
-  });
-
-  row.addEventListener('dragend', () => {
-    draggingIndex = -1;
-    row.classList.remove('dragging');
-  });
-
-  row.addEventListener('dragover', (event) => {
-    event.preventDefault();
-  });
-
-  row.addEventListener('drop', async (event) => {
-    event.preventDefault();
-    if (draggingIndex < 0 || draggingIndex === index) {
-      return;
-    }
-
-    moveAreaByDrag(draggingIndex, index);
-    draggingIndex = -1;
-    await saveAreaPreferences();
-    await syncAutoTargets();
-    renderAreaList();
-    await refreshData();
-  });
 
   const left = document.createElement('label');
   left.className = 'area-left';
@@ -184,8 +152,39 @@ function createAreaItemElement(item, index) {
 
   left.appendChild(checkbox);
   left.appendChild(name);
-  row.appendChild(left);
 
+  const orderWrap = document.createElement('div');
+  orderWrap.className = 'area-order';
+
+  const upBtn = document.createElement('button');
+  upBtn.className = 'order-btn';
+  upBtn.textContent = '上移';
+  upBtn.disabled = index === 0;
+  upBtn.addEventListener('click', async () => {
+    moveArea(index, -1);
+    await saveAreaPreferences();
+    await syncAutoTargets();
+    renderAreaList();
+    await refreshData();
+  });
+
+  const downBtn = document.createElement('button');
+  downBtn.className = 'order-btn';
+  downBtn.textContent = '下移';
+  downBtn.disabled = index === areaPreferences.length - 1;
+  downBtn.addEventListener('click', async () => {
+    moveArea(index, 1);
+    await saveAreaPreferences();
+    await syncAutoTargets();
+    renderAreaList();
+    await refreshData();
+  });
+
+  orderWrap.appendChild(upBtn);
+  orderWrap.appendChild(downBtn);
+
+  row.appendChild(left);
+  row.appendChild(orderWrap);
   return row;
 }
 
