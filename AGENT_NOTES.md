@@ -60,6 +60,7 @@
   - Added daily schedule settings in popup.
   - Can auto-start and auto-stop by `HH:MM:SS` time input (`type="time"` with `step="1"`).
   - Uses explicit buttons: `儲存並排程` and `停止排程`.
+  - Trigger logic uses `>= target time` once per day, so it won't miss due to 1-second timer drift.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`
   - `CLICK_REFRESH_ONCE`, `CLICK_PANEL_BY_TEXT`, `CLICK_REFRESH_AND_PANEL_BY_TEXT`

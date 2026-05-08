@@ -92,11 +92,10 @@ function render(running, intervalMs, errorText = '') {
     return;
   }
 
-  const sec = intervalMs ? Math.round(intervalMs / 1000) : 10;
   const selectedCount = getSelectedTargets().length;
   statusEl.textContent = running
-    ? `狀態: 已啟動（${sec}秒/次，目標${selectedCount}）`
-    : `狀態: 已暫停（${sec}秒/次，目標${selectedCount}）`;
+    ? `狀態: 已啟動（流程循環中，目標${selectedCount}）`
+    : `狀態: 已暫停（流程未啟動，目標${selectedCount}）`;
   startBtn.disabled = running;
   stopBtn.disabled = !running;
 }
@@ -218,6 +217,20 @@ function getCurrentDateYmd() {
   return `${y}-${m}-${d}`;
 }
 
+function timeHmsToSeconds(hms) {
+  const normalized = normalizeHmsTime(hms);
+  if (!normalized) {
+    return -1;
+  }
+  const [h, m, s] = normalized.split(':').map((x) => Number.parseInt(x, 10));
+  return h * 3600 + m * 60 + s;
+}
+
+function getCurrentSecondsOfDay() {
+  const now = new Date();
+  return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+}
+
 async function runScheduledStart() {
   const result = await sendToActiveTab({
     type: 'START_BOT',
@@ -246,15 +259,17 @@ async function checkScheduleTick() {
     return;
   }
 
-  const timeNow = getCurrentTimeHms();
   const dateNow = getCurrentDateYmd();
+  const nowSec = getCurrentSecondsOfDay();
+  const startSec = timeHmsToSeconds(scheduleSettings.startTime);
+  const stopSec = timeHmsToSeconds(scheduleSettings.stopTime);
 
-  if (scheduleSettings.startTime === timeNow && lastScheduleTrigger.start !== dateNow) {
+  if (startSec >= 0 && nowSec >= startSec && lastScheduleTrigger.start !== dateNow) {
     lastScheduleTrigger.start = dateNow;
     await runScheduledStart();
   }
 
-  if (scheduleSettings.stopTime === timeNow && lastScheduleTrigger.stop !== dateNow) {
+  if (stopSec >= 0 && nowSec >= stopSec && lastScheduleTrigger.stop !== dateNow) {
     lastScheduleTrigger.stop = dateNow;
     await runScheduledStop();
   }
@@ -438,11 +453,13 @@ reloadAreasBtn.addEventListener('click', async () => {
 
 saveScheduleBtn.addEventListener('click', async () => {
   await saveScheduleSettings();
+  statusEl.textContent = `狀態: 排程已啟用（啟動 ${scheduleSettings.startTime} / 暫停 ${scheduleSettings.stopTime}）`;
   await refreshData();
 });
 
 stopScheduleBtn.addEventListener('click', async () => {
   await disableScheduleSettings();
+  statusEl.textContent = '狀態: 排程已停止';
   await refreshData();
 });
 
