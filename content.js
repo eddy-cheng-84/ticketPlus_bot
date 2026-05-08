@@ -54,12 +54,42 @@
     return null;
   }
 
-  function collectPanelAreas() {
+  function getPanelEntries() {
     const headers = document.querySelectorAll('button.v-expansion-panel-header');
+    const entries = [];
+    for (const header of headers) {
+      const name = normalizeText(header.textContent || '');
+      if (!name) {
+        continue;
+      }
+      entries.push({ name, button: header });
+    }
+    return entries;
+  }
+
+  function chooseEntryByOrder(entries, orderMode) {
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return null;
+    }
+
+    if (orderMode === 'bottom_to_top') {
+      return entries[entries.length - 1];
+    }
+    if (orderMode === 'middle') {
+      return entries[Math.floor(entries.length / 2)];
+    }
+    if (orderMode === 'random') {
+      const index = Math.floor(Math.random() * entries.length);
+      return entries[index];
+    }
+    return entries[0];
+  }
+
+  function collectPanelAreas() {
     const seen = new Set();
     const areas = [];
-    for (const header of headers) {
-      const text = normalizeText(header.textContent || '');
+    for (const entry of getPanelEntries()) {
+      const text = entry.name;
       if (!text || seen.has(text)) {
         continue;
       }
@@ -167,6 +197,57 @@
     return { ok: true };
   }
 
+  function clickPlusTimes(count) {
+    const normalizedCount = Number.isFinite(count) ? count : 1;
+    const times = Math.max(1, normalizedCount);
+    for (let i = 0; i < times; i += 1) {
+      const result = clickPlusOnActivePanel();
+      if (!result.ok) {
+        return { ok: false, error: result.error, clicked: i };
+      }
+    }
+    pushLog(`手動點擊成功：已點擊 + ${times} 次`);
+    return { ok: true, clicked: times };
+  }
+
+  function selectPanelForFlow(keyword, selectedTargets, orderMode) {
+    const entries = getPanelEntries();
+    if (entries.length === 0) {
+      return { ok: false, error: 'NO_PANEL_ENTRIES' };
+    }
+
+    const normalizedKeyword = normalizeText(keyword || '');
+    let candidates = [];
+    if (normalizedKeyword) {
+      candidates = entries.filter((entry) => entry.name.includes(normalizedKeyword));
+      if (candidates.length === 0) {
+        pushLog(`流程失敗：找不到關鍵字票區「${normalizedKeyword}」`);
+        return { ok: false, error: 'KEYWORD_PANEL_NOT_FOUND' };
+      }
+    } else {
+      const normalizedTargets = Array.isArray(selectedTargets)
+        ? selectedTargets.map((item) => normalizeText(item)).filter(Boolean)
+        : [];
+
+      if (normalizedTargets.length > 0) {
+        candidates = entries.filter((entry) =>
+          normalizedTargets.some((target) => entry.name.includes(target))
+        );
+      } else {
+        candidates = entries;
+      }
+    }
+
+    const picked = chooseEntryByOrder(candidates, orderMode);
+    if (!picked || !picked.button) {
+      return { ok: false, error: 'NO_CANDIDATE_PICKED' };
+    }
+
+    picked.button.click();
+    pushLog(`流程點擊票區成功：「${picked.name}」`);
+    return { ok: true, matched: picked.name };
+  }
+
   function clickNextStepButton() {
     const candidates = document.querySelectorAll('span.v-btn__content');
     for (const span of candidates) {
@@ -186,6 +267,38 @@
 
     pushLog('手動點擊失敗：未找到「下一步」按鈕');
     return { ok: false, error: 'NEXT_STEP_NOT_FOUND' };
+  }
+
+  function runPurchaseFlow(options = {}) {
+    const plusCountParsed = Number.parseInt(String(options.plusCount || '1'), 10);
+    const plusCount = Number.isFinite(plusCountParsed) && plusCountParsed > 0 ? plusCountParsed : 1;
+
+    const refreshResult = clickRefreshOnce();
+    if (!refreshResult.ok) {
+      return { ok: false, step: 'refresh', error: refreshResult.error };
+    }
+
+    const panelResult = selectPanelForFlow(
+      options.keyword || '',
+      options.selectedTargets || [],
+      options.orderMode || 'top_to_bottom'
+    );
+    if (!panelResult.ok) {
+      return { ok: false, step: 'panel', error: panelResult.error };
+    }
+
+    const plusResult = clickPlusTimes(plusCount);
+    if (!plusResult.ok) {
+      return { ok: false, step: 'plus', error: plusResult.error };
+    }
+
+    const nextResult = clickNextStepButton();
+    if (!nextResult.ok) {
+      return { ok: false, step: 'next_step', error: nextResult.error };
+    }
+
+    pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 + -> 下一步');
+    return { ok: true, matched: panelResult.matched, plusCount };
   }
 
   function stop() {
@@ -289,6 +402,11 @@
 
     if (message.type === 'CLICK_NEXT_STEP') {
       sendResponse(clickNextStepButton());
+      return;
+    }
+
+    if (message.type === 'RUN_PURCHASE_FLOW') {
+      sendResponse(runPurchaseFlow(message));
     }
   });
 

@@ -80,6 +80,10 @@ button:disabled {
   font-size: 12px;
 }
 
+.flow-settings {
+  margin-bottom: 8px;
+}
+
 .area-item {
   display: grid;
   grid-template-columns: 1fr;

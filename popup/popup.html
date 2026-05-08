@@ -20,8 +20,20 @@
           <button id="reloadAreasBtn" class="manual">讀取票區清單</button>
         </div>
         <div id="areaList" class="area-list">尚未讀取票區</div>
+        <section class="flow-settings">
+          <label for="ticketCount" class="keyword-label">幾張票</label>
+          <input id="ticketCount" class="keyword-input" type="number" min="1" step="1" value="1" />
+          <label for="areaOrderMode" class="keyword-label">選擇順序</label>
+          <select id="areaOrderMode" class="keyword-input">
+            <option value="top_to_bottom">top to bottom</option>
+            <option value="bottom_to_top">bottom to top</option>
+            <option value="middle">middle</option>
+            <option value="random">random</option>
+          </select>
+          <button id="runFlowBtn" class="manual">一鍵執行流程</button>
+        </section>
         <label for="areaKeyword" class="keyword-label">單次手動關鍵字</label>
-        <input id="areaKeyword" class="keyword-input" type="text" value="2F VIP2（座席）" />
+        <input id="areaKeyword" class="keyword-input" type="text" value="" placeholder="可留空" />
         <div class="manual-grid">
           <button id="refreshOnceBtn" class="manual">點更新票數</button>
           <button id="vip2Btn" class="manual">依關鍵字點票區</button>

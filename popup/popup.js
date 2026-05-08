@@ -7,7 +7,10 @@ const vip2Btn = document.getElementById('vip2Btn');
 const comboBtn = document.getElementById('comboBtn');
 const plusBtn = document.getElementById('plusBtn');
 const nextStepBtn = document.getElementById('nextStepBtn');
+const runFlowBtn = document.getElementById('runFlowBtn');
 const areaKeywordInput = document.getElementById('areaKeyword');
+const ticketCountInput = document.getElementById('ticketCount');
+const areaOrderModeEl = document.getElementById('areaOrderMode');
 const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
 
@@ -70,7 +73,15 @@ function renderLogs(logs) {
 
 function getAreaKeyword() {
   const raw = (areaKeywordInput?.value || '').trim();
-  return raw || '2F VIP2（座席）';
+  return raw;
+}
+
+function getTicketCount() {
+  const parsed = Number.parseInt(ticketCountInput?.value || '1', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+  return parsed;
 }
 
 async function loadAreaPreferences() {
@@ -310,6 +321,23 @@ nextStepBtn.addEventListener('click', async () => {
   const result = await sendToActiveTab({ type: 'CLICK_NEXT_STEP' });
   if (!result || !result.ok) {
     render(false, 10000, '點下一步失敗');
+    return;
+  }
+
+  await refreshData();
+});
+
+runFlowBtn.addEventListener('click', async () => {
+  const result = await sendToActiveTab({
+    type: 'RUN_PURCHASE_FLOW',
+    keyword: getAreaKeyword(),
+    selectedTargets: getSelectedTargets(),
+    orderMode: areaOrderModeEl?.value || 'top_to_bottom',
+    plusCount: getTicketCount()
+  });
+  if (!result || !result.ok) {
+    render(false, 10000, '一鍵流程失敗');
+    await refreshData();
     return;
   }
 
