@@ -50,11 +50,11 @@
     - If both are empty, all areas are candidates.
   - Start/Stop now runs flow-loop mode:
     - `Start` triggers full flow with `下一步`.
-    - After `下一步`, waits 0.5s and checks URL change.
-    - If no navigation, loops the same flow again.
+    - After each full run, waits 0.5s and loops again.
 - Schedule controls
   - Added daily schedule settings in popup.
   - Can auto-start and auto-stop by `hh:mm:ss AM/PM` time.
+  - Uses explicit buttons: `儲存並排程` and `停止排程`.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`
   - `CLICK_REFRESH_ONCE`, `CLICK_PANEL_BY_TEXT`, `CLICK_REFRESH_AND_PANEL_BY_TEXT`

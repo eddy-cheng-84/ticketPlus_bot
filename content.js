@@ -131,12 +131,7 @@
         await sleep(LOOP_RETRY_DELAY_MS);
         continue;
       }
-      if (flowResult.navigated) {
-        pushLog('偵測到已跳轉頁面，停止 loop');
-        stop();
-        return;
-      }
-      pushLog('未偵測到跳轉，0.5 秒後重跑流程');
+      pushLog('流程完成，0.5 秒後重跑流程');
       await sleep(LOOP_RETRY_DELAY_MS);
     }
   }
@@ -294,11 +289,6 @@
     });
   }
 
-  function detectNavigation(beforeHref) {
-    const afterHref = window.location.href;
-    return beforeHref !== afterHref;
-  }
-
   async function runPurchaseFlow(options = {}, runtimeOptions = {}) {
     const plusCountParsed = Number.parseInt(String(options.plusCount || '1'), 10);
     const plusCount = Number.isFinite(plusCountParsed)
@@ -344,15 +334,12 @@
 
       const plusResult = clickPlusTimes(plusCount);
       if (plusResult.ok) {
-        let navigated = false;
         if (runtimeOptions.includeNextStep) {
-          const beforeHref = window.location.href;
           const nextResult = clickNextStepButton();
           if (!nextResult.ok) {
             return { ok: false, step: 'next_step', error: nextResult.error };
           }
           await sleep(500);
-          navigated = detectNavigation(beforeHref);
         }
         pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +' + (runtimeOptions.includeNextStep ? ' -> 下一步' : ''));
         return {
@@ -361,8 +348,7 @@
           plusCount,
           refreshToAreaDelayMs,
           areaToPlusDelayMs,
-          attempt,
-          navigated
+          attempt
         };
       }
 

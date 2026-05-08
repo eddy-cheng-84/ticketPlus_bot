@@ -2,13 +2,13 @@
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const reloadAreasBtn = document.getElementById('reloadAreasBtn');
-const runFlowBtn = document.getElementById('runFlowBtn');
+const saveScheduleBtn = document.getElementById('saveScheduleBtn');
+const stopScheduleBtn = document.getElementById('stopScheduleBtn');
 const areaKeywordInput = document.getElementById('areaKeyword');
 const ticketCountInput = document.getElementById('ticketCount');
 const refreshToAreaDelaySecInput = document.getElementById('refreshToAreaDelaySec');
 const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
 const areaOrderModeEl = document.getElementById('areaOrderMode');
-const scheduleEnabledEl = document.getElementById('scheduleEnabled');
 const scheduleStartTimeEl = document.getElementById('scheduleStartTime');
 const scheduleStopTimeEl = document.getElementById('scheduleStopTime');
 const areaListEl = document.getElementById('areaList');
@@ -187,7 +187,7 @@ async function saveScheduleSettings() {
   }
 
   scheduleSettings = {
-    enabled: Boolean(scheduleEnabledEl?.checked),
+    enabled: true,
     startTime: normalizedStart,
     stopTime: normalizedStop
   };
@@ -197,9 +197,16 @@ async function saveScheduleSettings() {
 }
 
 function hydrateScheduleSettingsUi() {
-  scheduleEnabledEl.checked = Boolean(scheduleSettings.enabled);
   scheduleStartTimeEl.value = scheduleSettings.startTime || '11:00:01';
   scheduleStopTimeEl.value = scheduleSettings.stopTime || '11:01:00';
+}
+
+async function disableScheduleSettings() {
+  scheduleSettings = {
+    ...scheduleSettings,
+    enabled: false
+  };
+  await chrome.storage.local.set({ [SCHEDULE_KEY]: scheduleSettings });
 }
 
 function getCurrentTimeAmPm() {
@@ -376,6 +383,7 @@ function mergeAreaPreferences(areas) {
 }
 
 async function refreshAreas() {
+  await sendToActiveTab({ type: 'CLICK_REFRESH_ONCE' });
   const result = await sendToActiveTab({ type: 'GET_PANEL_AREAS' });
   if (!result || !result.ok || !Array.isArray(result.areas)) {
     areaListEl.textContent = '讀取票區失敗（請先在目標頁重新整理）';
@@ -411,7 +419,12 @@ async function refreshData() {
 startBtn.addEventListener('click', async () => {
   const result = await sendToActiveTab({
     type: 'START_BOT',
-    targets: getSelectedTargets()
+    keyword: getAreaKeyword(),
+    selectedTargets: getSelectedTargets(),
+    orderMode: areaOrderModeEl?.value || 'top_to_bottom',
+    plusCount: getTicketCount(),
+    refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
+    areaToPlusDelayMs: getAreaToPlusDelayMs()
   });
   if (!result || !result.ok) {
     render(false, 10000, '啟動失敗');
@@ -435,35 +448,14 @@ reloadAreasBtn.addEventListener('click', async () => {
   await refreshAreas();
 });
 
-runFlowBtn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({
-    type: 'RUN_PURCHASE_FLOW',
-    keyword: getAreaKeyword(),
-    selectedTargets: getSelectedTargets(),
-    orderMode: areaOrderModeEl?.value || 'top_to_bottom',
-    plusCount: getTicketCount(),
-    refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
-    areaToPlusDelayMs: getAreaToPlusDelayMs()
-  });
-  if (!result || !result.ok) {
-    render(false, 10000, '一鍵流程失敗');
-    await refreshData();
-    return;
-  }
-
+saveScheduleBtn.addEventListener('click', async () => {
+  await saveScheduleSettings();
   await refreshData();
 });
 
-scheduleEnabledEl.addEventListener('change', async () => {
-  await saveScheduleSettings();
-});
-
-scheduleStartTimeEl.addEventListener('change', async () => {
-  await saveScheduleSettings();
-});
-
-scheduleStopTimeEl.addEventListener('change', async () => {
-  await saveScheduleSettings();
+stopScheduleBtn.addEventListener('click', async () => {
+  await disableScheduleSettings();
+  await refreshData();
 });
 
 async function init() {
