@@ -79,6 +79,7 @@ function buildAreaKey(rawText) {
   let key = normalizeText(rawText);
   key = key.replace(/剩餘\s*\d+/g, '');
   key = key.replace(/NT\.?\s*[\d,]+/g, '');
+  key = key.replace(/熱賣中|已售完|完售|開賣時間|即將開賣|登記抽選/g, '');
   return normalizeText(key);
 }
 

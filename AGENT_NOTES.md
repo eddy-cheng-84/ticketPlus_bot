@@ -54,6 +54,7 @@
     - Skips areas with `剩餘 0`.
     - If all desired targets are `剩餘 0`, refreshes and retries detection automatically.
   - Debug logs now include normalized area keys when reading area list and when selecting an area.
+  - Key normalization strips dynamic/status fragments such as `剩餘 N`, `NT ...`, `熱賣中`, `已售完`.
   - Start/Stop now runs flow-loop mode:
     - `Start` triggers full flow with `下一步`.
     - `+` multi-click uses 50ms gap between each click.
