@@ -28,11 +28,8 @@
   - Tick interval 10 seconds.
   - Tick behavior: click `更新票數`; then try selected seat areas by priority.
 - Manual actions in popup
-  - Click `更新票數` once.
-  - Click panel by keyword.
-  - Click `更新票數` then panel by keyword.
-  - Click `+` button in current active/expanded panel.
-  - Click `下一步` button by text matching.
+  - Individual manual action buttons were removed from popup UI.
+  - Main operation path is now the one-click flow plus start/stop loop controls.
 - Seat area discovery and selection
   - Read all panel headers from page and show checklist in popup.
   - Multi-select seat areas for auto targeting.

@@ -2,11 +2,6 @@
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const reloadAreasBtn = document.getElementById('reloadAreasBtn');
-const refreshOnceBtn = document.getElementById('refreshOnceBtn');
-const vip2Btn = document.getElementById('vip2Btn');
-const comboBtn = document.getElementById('comboBtn');
-const plusBtn = document.getElementById('plusBtn');
-const nextStepBtn = document.getElementById('nextStepBtn');
 const runFlowBtn = document.getElementById('runFlowBtn');
 const areaKeywordInput = document.getElementById('areaKeyword');
 const ticketCountInput = document.getElementById('ticketCount');
@@ -286,62 +281,6 @@ stopBtn.addEventListener('click', async () => {
 
 reloadAreasBtn.addEventListener('click', async () => {
   await refreshAreas();
-});
-
-refreshOnceBtn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({ type: 'CLICK_REFRESH_ONCE' });
-  if (!result || !result.ok) {
-    render(false, 10000, '點更新票數失敗');
-    return;
-  }
-
-  await refreshData();
-});
-
-vip2Btn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({
-    type: 'CLICK_PANEL_BY_TEXT',
-    text: getAreaKeyword()
-  });
-  if (!result || !result.ok) {
-    render(false, 10000, '點票區失敗');
-    return;
-  }
-
-  await refreshData();
-});
-
-comboBtn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({
-    type: 'CLICK_REFRESH_AND_PANEL_BY_TEXT',
-    text: getAreaKeyword()
-  });
-  if (!result || !result.ok) {
-    render(false, 10000, '一鍵操作失敗');
-    return;
-  }
-
-  await refreshData();
-});
-
-plusBtn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({ type: 'CLICK_PLUS_ON_ACTIVE_PANEL' });
-  if (!result || !result.ok) {
-    render(false, 10000, '點 + 號失敗');
-    return;
-  }
-
-  await refreshData();
-});
-
-nextStepBtn.addEventListener('click', async () => {
-  const result = await sendToActiveTab({ type: 'CLICK_NEXT_STEP' });
-  if (!result || !result.ok) {
-    render(false, 10000, '點下一步失敗');
-    return;
-  }
-
-  await refreshData();
 });
 
 runFlowBtn.addEventListener('click', async () => {
