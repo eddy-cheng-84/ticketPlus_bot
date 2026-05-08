@@ -349,7 +349,7 @@
     }
 
     picked.button.click();
-    pushLog(`流程點擊票區成功：key=${picked.key} / label=${picked.label}`);
+    pushLog(`流程點擊票區成功：「${picked.label}」`);
     return { ok: true, matched: picked.key, matchedLabel: picked.label };
   }
 
@@ -573,11 +573,6 @@
 
     if (message.type === 'GET_PANEL_AREAS') {
       const areas = collectPanelAreas();
-      if (areas.length > 0) {
-        pushLog(`票區KEY清單：${areas.map((item) => item.key).join(' | ')}`);
-      } else {
-        pushLog('票區KEY清單：<empty>');
-      }
       sendResponse({ ok: true, areas });
       return;
     }
