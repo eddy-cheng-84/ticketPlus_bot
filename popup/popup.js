@@ -10,6 +10,7 @@ const nextStepBtn = document.getElementById('nextStepBtn');
 const runFlowBtn = document.getElementById('runFlowBtn');
 const areaKeywordInput = document.getElementById('areaKeyword');
 const ticketCountInput = document.getElementById('ticketCount');
+const refreshToAreaDelaySecInput = document.getElementById('refreshToAreaDelaySec');
 const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
 const areaOrderModeEl = document.getElementById('areaOrderMode');
 const areaListEl = document.getElementById('areaList');
@@ -86,6 +87,14 @@ function getTicketCount() {
 
 function getAreaToPlusDelayMs() {
   const parsed = Number.parseFloat(areaToPlusDelaySecInput?.value || '0');
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return Math.round(parsed * 1000);
+}
+
+function getRefreshToAreaDelayMs() {
+  const parsed = Number.parseFloat(refreshToAreaDelaySecInput?.value || '0');
   if (!Number.isFinite(parsed) || parsed < 0) {
     return 0;
   }
@@ -342,6 +351,7 @@ runFlowBtn.addEventListener('click', async () => {
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
     plusCount: getTicketCount(),
+    refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
     areaToPlusDelayMs: getAreaToPlusDelayMs()
   });
   if (!result || !result.ok) {

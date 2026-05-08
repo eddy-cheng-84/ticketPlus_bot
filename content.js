@@ -286,10 +286,18 @@
       : 1;
     const delayParsed = Number.parseInt(String(options.areaToPlusDelayMs || '0'), 10);
     const areaToPlusDelayMs = Number.isFinite(delayParsed) && delayParsed > 0 ? delayParsed : 0;
+    const refreshDelayParsed = Number.parseInt(String(options.refreshToAreaDelayMs || '0'), 10);
+    const refreshToAreaDelayMs =
+      Number.isFinite(refreshDelayParsed) && refreshDelayParsed > 0 ? refreshDelayParsed : 0;
 
     const refreshResult = clickRefreshOnce();
     if (!refreshResult.ok) {
       return { ok: false, step: 'refresh', error: refreshResult.error };
+    }
+
+    if (refreshToAreaDelayMs > 0) {
+      pushLog(`流程等待：更新票數後延遲 ${refreshToAreaDelayMs}ms`);
+      await sleep(refreshToAreaDelayMs);
     }
 
     const panelResult = selectPanelForFlow(
@@ -312,7 +320,13 @@
     }
 
     pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +');
-    return { ok: true, matched: panelResult.matched, plusCount, areaToPlusDelayMs };
+    return {
+      ok: true,
+      matched: panelResult.matched,
+      plusCount,
+      refreshToAreaDelayMs,
+      areaToPlusDelayMs
+    };
   }
 
   function stop() {

@@ -42,6 +42,7 @@
   - Added `一鍵執行流程` button.
   - Flow steps: `更新票數 -> 選票區 -> 點 +`.
   - Added `幾張票` setting with hard limit `0~4`.
+  - Added `更新票數後延遲秒數` setting (wait after refresh before selecting area).
   - Added `選區後延遲秒數` setting for waiting before `+` clicks.
   - Added `選擇順序` setting: `top to bottom`, `bottom to top`, `middle`, `random`.
   - Area fallback logic:
