@@ -43,6 +43,13 @@
     return (text || '').replace(/\s+/g, ' ').trim();
   }
 
+  function buildAreaKey(rawText) {
+    let key = normalizeText(rawText);
+    key = key.replace(/剩餘\s*\d+/g, '');
+    key = key.replace(/NT\.?\s*[\d,]+/g, '');
+    return normalizeText(key);
+  }
+
   function normalizeHmsTime(value) {
     const raw = normalizeText(value);
     const match = raw.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
@@ -112,14 +119,19 @@
     const headers = document.querySelectorAll('button.v-expansion-panel-header');
     const entries = [];
     for (const header of headers) {
-      const name = normalizeText(header.textContent || '');
-      if (!name) {
+      const label = normalizeText(header.textContent || '');
+      if (!label) {
+        continue;
+      }
+      const key = buildAreaKey(label);
+      if (!key) {
         continue;
       }
       entries.push({
-        name,
+        key,
+        label,
         button: header,
-        remaining: extractRemainingCount(name)
+        remaining: extractRemainingCount(label)
       });
     }
     return entries;
@@ -160,12 +172,15 @@
     const seen = new Set();
     const areas = [];
     for (const entry of getPanelEntries()) {
-      const text = entry.name;
-      if (!text || seen.has(text)) {
+      if (!entry.key || seen.has(entry.key)) {
         continue;
       }
-      seen.add(text);
-      areas.push(text);
+      seen.add(entry.key);
+      areas.push({
+        key: entry.key,
+        label: entry.label,
+        remaining: entry.remaining
+      });
     }
     return areas;
   }
@@ -211,7 +226,7 @@
     }
 
     autoTargets = Array.isArray(options.selectedTargets)
-      ? options.selectedTargets.map((item) => normalizeText(item)).filter(Boolean)
+      ? options.selectedTargets.map((item) => buildAreaKey(item)).filter(Boolean)
       : [];
     startOptions = {
       selectedTargets: autoTargets,
@@ -294,27 +309,27 @@
     return { ok: true, clicked: times };
   }
 
-  function selectPanelForFlow(selectedTargets, orderMode) {
+  function selectPanelForFlow(selectedTargetKeys, orderMode) {
     const entries = getPanelEntries();
     if (entries.length === 0) {
       return { ok: false, error: 'NO_PANEL_ENTRIES' };
     }
 
     let candidates = [];
-    const normalizedTargets = Array.isArray(selectedTargets)
-      ? selectedTargets.map((item) => normalizeText(item)).filter(Boolean)
+    const normalizedTargetKeys = Array.isArray(selectedTargetKeys)
+      ? selectedTargetKeys.map((item) => buildAreaKey(item)).filter(Boolean)
       : [];
 
-    if (normalizedTargets.length > 0) {
-      for (const target of normalizedTargets) {
-        const targetMatches = entries.filter((entry) => entry.name.includes(target));
+    if (normalizedTargetKeys.length > 0) {
+      for (const targetKey of normalizedTargetKeys) {
+        const targetMatches = entries.filter((entry) => entry.key === targetKey);
         const availableMatches = targetMatches.filter((entry) => !isSoldOutEntry(entry));
         if (availableMatches.length > 0) {
           candidates = availableMatches;
           break;
         }
         if (targetMatches.length > 0) {
-          pushLog(`略過票區（剩餘 0）：「${target}」`);
+          pushLog(`略過票區（剩餘 0）：「${targetKey}」`);
         }
       }
       if (candidates.length === 0) {
@@ -333,8 +348,8 @@
     }
 
     picked.button.click();
-    pushLog(`流程點擊票區成功：「${picked.name}」`);
-    return { ok: true, matched: picked.name };
+    pushLog(`流程點擊票區成功：key=${picked.key} / label=${picked.label}`);
+    return { ok: true, matched: picked.key, matchedLabel: picked.label };
   }
 
   function clickNextStepButton() {
@@ -556,13 +571,19 @@
     }
 
     if (message.type === 'GET_PANEL_AREAS') {
-      sendResponse({ ok: true, areas: collectPanelAreas() });
+      const areas = collectPanelAreas();
+      if (areas.length > 0) {
+        pushLog(`票區KEY清單：${areas.map((item) => item.key).join(' | ')}`);
+      } else {
+        pushLog('票區KEY清單：<empty>');
+      }
+      sendResponse({ ok: true, areas });
       return;
     }
 
     if (message.type === 'SET_AUTO_TARGETS') {
       autoTargets = Array.isArray(message.targets)
-        ? message.targets.map((item) => normalizeText(item)).filter(Boolean)
+        ? message.targets.map((item) => buildAreaKey(item)).filter(Boolean)
         : [];
       pushLog(`已更新自動目標，共 ${autoTargets.length} 個`);
       sendResponse({ ok: true, targets: autoTargets });
@@ -597,7 +618,9 @@
       scheduleState.startTime = startTime;
       scheduleState.stopTime = stopTime;
       scheduleState.options = {
-        selectedTargets: Array.isArray(message.selectedTargets) ? message.selectedTargets : [],
+        selectedTargets: Array.isArray(message.selectedTargets)
+          ? message.selectedTargets.map((item) => buildAreaKey(item)).filter(Boolean)
+          : [],
         orderMode: message.orderMode || 'top_to_bottom',
         plusCount: message.plusCount,
         refreshToAreaDelayMs: message.refreshToAreaDelayMs,

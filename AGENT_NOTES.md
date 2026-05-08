@@ -52,6 +52,7 @@
     - Parses `剩餘 N` from area text.
     - Skips areas with `剩餘 0`.
     - If all desired targets are `剩餘 0`, refreshes and retries detection automatically.
+  - Debug logs now include normalized area keys when reading area list and when selecting an area.
   - Start/Stop now runs flow-loop mode:
     - `Start` triggers full flow with `下一步`.
     - `+` multi-click uses 50ms gap between each click.

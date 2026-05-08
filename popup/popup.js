@@ -74,8 +74,15 @@ function normalizeHmsTime(value) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
 }
 
+function buildAreaKey(rawText) {
+  let key = normalizeText(rawText);
+  key = key.replace(/剩餘\s*\d+/g, '');
+  key = key.replace(/NT\.?\s*[\d,]+/g, '');
+  return normalizeText(key);
+}
+
 function getSelectedTargets() {
-  return areaPreferences.filter((item) => item.selected).map((item) => item.name);
+  return areaPreferences.filter((item) => item.selected).map((item) => item.key);
 }
 
 function getTicketCount() {
@@ -137,8 +144,20 @@ async function loadAreaPreferences() {
   }
 
   areaPreferences = saved
-    .map((item) => ({ name: normalizeText(item?.name || ''), selected: Boolean(item?.selected) }))
-    .filter((item) => Boolean(item.name));
+    .map((item) => {
+      if (item && typeof item === 'object' && typeof item.key === 'string') {
+        const key = buildAreaKey(item.key);
+        const label = normalizeText(item.label || item.key);
+        return { key, label: label || key, selected: Boolean(item.selected) };
+      }
+      const oldName = normalizeText(item?.name || '');
+      const key = buildAreaKey(oldName);
+      if (!key) {
+        return null;
+      }
+      return { key, label: oldName || key, selected: Boolean(item?.selected) };
+    })
+    .filter((item) => Boolean(item && item.key));
 }
 
 async function saveAreaPreferences() {
@@ -214,7 +233,7 @@ function createAreaItemElement(item, index) {
 
   const name = document.createElement('span');
   name.className = 'area-name';
-  name.textContent = item.name;
+  name.textContent = item.label;
 
   left.appendChild(checkbox);
   left.appendChild(name);
@@ -266,21 +285,51 @@ function renderAreaList() {
 }
 
 function mergeAreaPreferences(areas) {
-  const normalized = areas.map((name) => normalizeText(name)).filter(Boolean);
-  const unique = [...new Set(normalized)];
-  const oldMap = new Map(areaPreferences.map((item) => [item.name, item]));
+  const normalized = areas
+    .map((area) => {
+      if (area && typeof area === 'object') {
+        const key = buildAreaKey(area.key || area.label || '');
+        const label = normalizeText(area.label || area.key || '');
+        if (!key) {
+          return null;
+        }
+        return { key, label: label || key };
+      }
+      const label = normalizeText(String(area || ''));
+      const key = buildAreaKey(label);
+      if (!key) {
+        return null;
+      }
+      return { key, label: label || key };
+    })
+    .filter(Boolean);
+  const unique = [];
+  const seen = new Set();
+  for (const item of normalized) {
+    if (seen.has(item.key)) {
+      continue;
+    }
+    seen.add(item.key);
+    unique.push(item);
+  }
+  const oldMap = new Map(areaPreferences.map((item) => [item.key, item]));
 
   const next = [];
-  for (const name of areaPreferences.map((item) => item.name)) {
-    if (unique.includes(name)) {
-      const old = oldMap.get(name);
-      next.push({ name, selected: Boolean(old?.selected) });
+  for (const key of areaPreferences.map((item) => item.key)) {
+    const incoming = unique.find((item) => item.key === key);
+    if (incoming) {
+      const old = oldMap.get(key);
+      next.push({
+        key,
+        label: incoming.label || key,
+        selected: Boolean(old?.selected)
+      });
     }
   }
 
-  for (const name of unique) {
-    if (!next.find((item) => item.name === name)) {
-      next.push({ name, selected: false });
+  for (const item of unique) {
+    if (!next.find((entry) => entry.key === item.key)) {
+      next.push({ key: item.key, label: item.label || item.key, selected: false });
     }
   }
 
