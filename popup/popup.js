@@ -1,4 +1,5 @@
 ﻿const statusEl = document.getElementById('status');
+const scheduleStatusEl = document.getElementById('scheduleStatus');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const reloadAreasBtn = document.getElementById('reloadAreasBtn');
@@ -15,17 +16,10 @@ const logBox = document.getElementById('logBox');
 
 const STORAGE_KEY = 'area_preferences_v1';
 const SCHEDULE_KEY = 'schedule_settings_v1';
-let areaPreferences = [];
-let scheduleSettings = {
-  enabled: false,
-  startTime: '11:00:01',
-  stopTime: '11:01:00'
-};
-let lastScheduleTrigger = {
-  start: '',
-  stop: ''
-};
 const ALLOWED_HOST_SUFFIX = 'ticketplus.com.tw';
+
+let areaPreferences = [];
+let scheduleSettings = { startTime: '11:00:01', stopTime: '11:01:00' };
 
 function isAllowedTicketplusUrl(url) {
   if (!url || typeof url !== 'string') {
@@ -84,6 +78,30 @@ function getSelectedTargets() {
   return areaPreferences.filter((item) => item.selected).map((item) => item.name);
 }
 
+function getTicketCount() {
+  const parsed = Number.parseInt(ticketCountInput?.value || '1', 10);
+  if (!Number.isFinite(parsed)) {
+    return 1;
+  }
+  return Math.min(4, Math.max(0, parsed));
+}
+
+function getAreaToPlusDelayMs() {
+  const parsed = Number.parseFloat(areaToPlusDelaySecInput?.value || '0');
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return Math.round(parsed * 1000);
+}
+
+function getRefreshToAreaDelayMs() {
+  const parsed = Number.parseFloat(refreshToAreaDelaySecInput?.value || '0');
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+  return Math.round(parsed * 1000);
+}
+
 function render(running, intervalMs, errorText = '') {
   if (errorText) {
     statusEl.textContent = `狀態: ${errorText}`;
@@ -110,30 +128,6 @@ function renderLogs(logs) {
   logBox.scrollTop = logBox.scrollHeight;
 }
 
-function getTicketCount() {
-  const parsed = Number.parseInt(ticketCountInput?.value || '1', 10);
-  if (!Number.isFinite(parsed)) {
-    return 1;
-  }
-  return Math.min(4, Math.max(0, parsed));
-}
-
-function getAreaToPlusDelayMs() {
-  const parsed = Number.parseFloat(areaToPlusDelaySecInput?.value || '0');
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
-  }
-  return Math.round(parsed * 1000);
-}
-
-function getRefreshToAreaDelayMs() {
-  const parsed = Number.parseFloat(refreshToAreaDelaySecInput?.value || '0');
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
-  }
-  return Math.round(parsed * 1000);
-}
-
 async function loadAreaPreferences() {
   const result = await chrome.storage.local.get(STORAGE_KEY);
   const saved = result?.[STORAGE_KEY];
@@ -143,10 +137,7 @@ async function loadAreaPreferences() {
   }
 
   areaPreferences = saved
-    .map((item) => ({
-      name: normalizeText(item?.name || ''),
-      selected: Boolean(item?.selected)
-    }))
+    .map((item) => ({ name: normalizeText(item?.name || ''), selected: Boolean(item?.selected) }))
     .filter((item) => Boolean(item.name));
 }
 
@@ -158,15 +149,12 @@ async function loadScheduleSettings() {
   const result = await chrome.storage.local.get(SCHEDULE_KEY);
   const saved = result?.[SCHEDULE_KEY];
   if (!saved || typeof saved !== 'object') {
-    scheduleSettings = { enabled: false, startTime: '11:00:01', stopTime: '11:01:00' };
+    scheduleSettings = { startTime: '11:00:01', stopTime: '11:01:00' };
     return;
   }
   scheduleSettings = {
-    enabled: Boolean(saved.enabled),
-    startTime:
-      normalizeHmsTime(typeof saved.startTime === 'string' ? saved.startTime : '') || '11:00:01',
-    stopTime:
-      normalizeHmsTime(typeof saved.stopTime === 'string' ? saved.stopTime : '') || '11:01:00'
+    startTime: normalizeHmsTime(typeof saved.startTime === 'string' ? saved.startTime : '') || '11:00:01',
+    stopTime: normalizeHmsTime(typeof saved.stopTime === 'string' ? saved.stopTime : '') || '11:01:00'
   };
 }
 
@@ -175,104 +163,19 @@ async function saveScheduleSettings() {
   const normalizedStop = normalizeHmsTime(scheduleStopTimeEl?.value || '');
   if (!normalizedStart || !normalizedStop) {
     render(false, 10000, '定時格式錯誤，請用 11:00:01');
-    return;
+    return false;
   }
 
-  scheduleSettings = {
-    enabled: true,
-    startTime: normalizedStart,
-    stopTime: normalizedStop
-  };
+  scheduleSettings = { startTime: normalizedStart, stopTime: normalizedStop };
   scheduleStartTimeEl.value = scheduleSettings.startTime;
   scheduleStopTimeEl.value = scheduleSettings.stopTime;
   await chrome.storage.local.set({ [SCHEDULE_KEY]: scheduleSettings });
+  return true;
 }
 
 function hydrateScheduleSettingsUi() {
   scheduleStartTimeEl.value = scheduleSettings.startTime || '11:00:01';
   scheduleStopTimeEl.value = scheduleSettings.stopTime || '11:01:00';
-}
-
-async function disableScheduleSettings() {
-  scheduleSettings = {
-    ...scheduleSettings,
-    enabled: false
-  };
-  await chrome.storage.local.set({ [SCHEDULE_KEY]: scheduleSettings });
-}
-
-function getCurrentTimeHms() {
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  const s = String(now.getSeconds()).padStart(2, '0');
-  return `${h}:${m}:${s}`;
-}
-
-function getCurrentDateYmd() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function timeHmsToSeconds(hms) {
-  const normalized = normalizeHmsTime(hms);
-  if (!normalized) {
-    return -1;
-  }
-  const [h, m, s] = normalized.split(':').map((x) => Number.parseInt(x, 10));
-  return h * 3600 + m * 60 + s;
-}
-
-function getCurrentSecondsOfDay() {
-  const now = new Date();
-  return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-}
-
-async function runScheduledStart() {
-  const result = await sendToActiveTab({
-    type: 'START_BOT',
-    selectedTargets: getSelectedTargets(),
-    orderMode: areaOrderModeEl?.value || 'top_to_bottom',
-    plusCount: getTicketCount(),
-    refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
-    areaToPlusDelayMs: getAreaToPlusDelayMs()
-  });
-  if (!result || !result.ok) {
-    return;
-  }
-  await refreshData();
-}
-
-async function runScheduledStop() {
-  const result = await sendToActiveTab({ type: 'STOP_BOT' });
-  if (!result || !result.ok) {
-    return;
-  }
-  await refreshData();
-}
-
-async function checkScheduleTick() {
-  if (!scheduleSettings.enabled) {
-    return;
-  }
-
-  const dateNow = getCurrentDateYmd();
-  const nowSec = getCurrentSecondsOfDay();
-  const startSec = timeHmsToSeconds(scheduleSettings.startTime);
-  const stopSec = timeHmsToSeconds(scheduleSettings.stopTime);
-
-  if (startSec >= 0 && nowSec >= startSec && lastScheduleTrigger.start !== dateNow) {
-    lastScheduleTrigger.start = dateNow;
-    await runScheduledStart();
-  }
-
-  if (stopSec >= 0 && nowSec >= stopSec && lastScheduleTrigger.stop !== dateNow) {
-    lastScheduleTrigger.stop = dateNow;
-    await runScheduledStop();
-  }
 }
 
 async function syncAutoTargets() {
@@ -353,12 +256,10 @@ function createAreaItemElement(item, index) {
 
 function renderAreaList() {
   areaListEl.innerHTML = '';
-
   if (!Array.isArray(areaPreferences) || areaPreferences.length === 0) {
     areaListEl.textContent = '尚未讀取票區';
     return;
   }
-
   for (let i = 0; i < areaPreferences.length; i += 1) {
     areaListEl.appendChild(createAreaItemElement(areaPreferences[i], i));
   }
@@ -413,6 +314,11 @@ async function refreshData() {
   }
 
   render(Boolean(statusResult.running), statusResult.intervalMs);
+  if (scheduleStatusEl) {
+    scheduleStatusEl.textContent = statusResult.scheduleEnabled
+      ? `排程: 啟用中（啟動 ${statusResult.scheduleStartTime} / 暫停 ${statusResult.scheduleStopTime}）`
+      : '排程: 未啟用';
+  }
 
   const logResult = await sendToActiveTab({ type: 'GET_BOT_LOGS' });
   if (logResult && logResult.ok) {
@@ -433,7 +339,6 @@ startBtn.addEventListener('click', async () => {
     render(false, 10000, '啟動失敗');
     return;
   }
-
   await refreshData();
 });
 
@@ -443,7 +348,6 @@ stopBtn.addEventListener('click', async () => {
     render(false, 10000, '暫停失敗');
     return;
   }
-
   await refreshData();
 });
 
@@ -452,14 +356,43 @@ reloadAreasBtn.addEventListener('click', async () => {
 });
 
 saveScheduleBtn.addEventListener('click', async () => {
-  await saveScheduleSettings();
-  statusEl.textContent = `狀態: 排程已啟用（啟動 ${scheduleSettings.startTime} / 暫停 ${scheduleSettings.stopTime}）`;
+  const ok = await saveScheduleSettings();
+  if (!ok) {
+    return;
+  }
+  const result = await sendToActiveTab({
+    type: 'SET_SCHEDULE',
+    startTime: scheduleSettings.startTime,
+    stopTime: scheduleSettings.stopTime,
+    selectedTargets: getSelectedTargets(),
+    orderMode: areaOrderModeEl?.value || 'top_to_bottom',
+    plusCount: getTicketCount(),
+    refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
+    areaToPlusDelayMs: getAreaToPlusDelayMs()
+  });
+  if (!result || !result.ok) {
+    if (scheduleStatusEl) {
+      scheduleStatusEl.textContent = '排程: 啟用失敗';
+    }
+    return;
+  }
+  if (scheduleStatusEl) {
+    scheduleStatusEl.textContent = `排程: 啟用中（啟動 ${scheduleSettings.startTime} / 暫停 ${scheduleSettings.stopTime}）`;
+  }
   await refreshData();
 });
 
 stopScheduleBtn.addEventListener('click', async () => {
-  await disableScheduleSettings();
-  statusEl.textContent = '狀態: 排程已停止';
+  const result = await sendToActiveTab({ type: 'STOP_SCHEDULE' });
+  if (!result || !result.ok) {
+    if (scheduleStatusEl) {
+      scheduleStatusEl.textContent = '排程: 停止失敗';
+    }
+    return;
+  }
+  if (scheduleStatusEl) {
+    scheduleStatusEl.textContent = '排程: 已停止';
+  }
   await refreshData();
 });
 
@@ -472,9 +405,6 @@ async function init() {
   await refreshData();
   await refreshAreas();
   window.setInterval(refreshData, 1000);
-  window.setInterval(() => {
-    checkScheduleTick();
-  }, 1000);
 }
 
 init();

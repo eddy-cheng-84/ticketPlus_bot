@@ -9,6 +9,15 @@
   let timerId = null;
   let autoTargets = [];
   let startOptions = {};
+  let scheduleTimerId = null;
+  let scheduleState = {
+    enabled: false,
+    startTime: '11:00:01',
+    stopTime: '11:01:00',
+    options: {},
+    lastStartDate: '',
+    lastStopDate: ''
+  };
   const logs = [];
 
   function pushLog(message) {
@@ -31,6 +40,46 @@
 
   function normalizeText(text) {
     return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizeHmsTime(value) {
+    const raw = normalizeText(value);
+    const match = raw.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+    if (!match) {
+      return '';
+    }
+    const hour = Number.parseInt(match[1], 10);
+    const minute = Number.parseInt(match[2], 10);
+    const second = Number.parseInt(match[3], 10);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+      return '';
+    }
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+  }
+
+  function getCurrentTimeHms() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function getCurrentDateYmd() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function timeHmsToSeconds(hms) {
+    const normalized = normalizeHmsTime(hms);
+    if (!normalized) {
+      return -1;
+    }
+    const [h, m, s] = normalized.split(':').map((x) => Number.parseInt(x, 10));
+    return h * 3600 + m * 60 + s;
   }
 
   function findPanelButtonByText(keyword) {
@@ -407,6 +456,29 @@
     console.log('[ticket_plus_bot] auto click stopped');
   }
 
+  function checkScheduleTick() {
+    if (!scheduleState.enabled) {
+      return;
+    }
+
+    const nowSec = timeHmsToSeconds(getCurrentTimeHms());
+    const startSec = timeHmsToSeconds(scheduleState.startTime);
+    const stopSec = timeHmsToSeconds(scheduleState.stopTime);
+    const dateNow = getCurrentDateYmd();
+
+    if (startSec >= 0 && nowSec >= startSec && scheduleState.lastStartDate !== dateNow) {
+      scheduleState.lastStartDate = dateNow;
+      start(scheduleState.options || {});
+      pushLog(`排程觸發：自動啟動 ${scheduleState.startTime}`);
+    }
+
+    if (stopSec >= 0 && nowSec >= stopSec && scheduleState.lastStopDate !== dateNow) {
+      scheduleState.lastStopDate = dateNow;
+      stop();
+      pushLog(`排程觸發：自動暫停 ${scheduleState.stopTime}`);
+    }
+  }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || typeof message !== 'object') {
       return;
@@ -425,7 +497,15 @@
     }
 
     if (message.type === 'GET_BOT_STATUS') {
-      sendResponse({ ok: true, running, intervalMs: INTERVAL_MS, targets: autoTargets });
+      sendResponse({
+        ok: true,
+        running,
+        intervalMs: INTERVAL_MS,
+        targets: autoTargets,
+        scheduleEnabled: scheduleState.enabled,
+        scheduleStartTime: scheduleState.startTime,
+        scheduleStopTime: scheduleState.stopTime
+      });
       return;
     }
 
@@ -501,8 +581,37 @@
       });
       return true;
     }
+
+    if (message.type === 'SET_SCHEDULE') {
+      const startTime = normalizeHmsTime(message.startTime || '');
+      const stopTime = normalizeHmsTime(message.stopTime || '');
+      if (!startTime || !stopTime) {
+        sendResponse({ ok: false, error: 'INVALID_SCHEDULE_TIME' });
+        return;
+      }
+      scheduleState.enabled = true;
+      scheduleState.startTime = startTime;
+      scheduleState.stopTime = stopTime;
+      scheduleState.options = {
+        selectedTargets: Array.isArray(message.selectedTargets) ? message.selectedTargets : [],
+        orderMode: message.orderMode || 'top_to_bottom',
+        plusCount: message.plusCount,
+        refreshToAreaDelayMs: message.refreshToAreaDelayMs,
+        areaToPlusDelayMs: message.areaToPlusDelayMs
+      };
+      pushLog(`排程已啟用：${startTime} 啟動 / ${stopTime} 暫停`);
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === 'STOP_SCHEDULE') {
+      scheduleState.enabled = false;
+      pushLog('排程已停止');
+      sendResponse({ ok: true });
+    }
   });
 
+  scheduleTimerId = window.setInterval(checkScheduleTick, 1000);
   pushLog('內容腳本已載入，等待指令');
   console.log('[ticket_plus_bot] content script ready:', window.location.href);
 })();
