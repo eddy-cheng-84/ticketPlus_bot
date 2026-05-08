@@ -143,6 +143,30 @@
     return { ok: true };
   }
 
+  function clickPlusOnActivePanel() {
+    const activePanel = document.querySelector('div.v-expansion-panel.v-expansion-panel--active');
+    if (!activePanel) {
+      pushLog('手動點擊失敗：找不到展開中的票區');
+      return { ok: false, error: 'ACTIVE_PANEL_NOT_FOUND' };
+    }
+
+    const plusIcon = activePanel.querySelector('i.mdi.mdi-plus');
+    if (!plusIcon) {
+      pushLog('手動點擊失敗：找不到 + 圖示');
+      return { ok: false, error: 'PLUS_ICON_NOT_FOUND' };
+    }
+
+    const plusButton = plusIcon.closest('button');
+    if (!plusButton) {
+      pushLog('手動點擊失敗：找不到 + 按鈕');
+      return { ok: false, error: 'PLUS_BUTTON_NOT_FOUND' };
+    }
+
+    plusButton.click();
+    pushLog('手動點擊成功：已點擊 + 按鈕');
+    return { ok: true };
+  }
+
   function stop() {
     if (!running) {
       pushLog('暫停請求略過：目前已停止');
@@ -234,6 +258,11 @@
         : [];
       pushLog(`已更新自動目標，共 ${autoTargets.length} 個`);
       sendResponse({ ok: true, targets: autoTargets });
+      return;
+    }
+
+    if (message.type === 'CLICK_PLUS_ON_ACTIVE_PANEL') {
+      sendResponse(clickPlusOnActivePanel());
     }
   });
 
