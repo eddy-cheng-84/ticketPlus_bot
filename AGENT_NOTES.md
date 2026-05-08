@@ -40,8 +40,8 @@
   - Added `一鍵執行流程` button.
   - Flow steps: `更新票數 -> 選票區 -> 點 +`.
   - Added `幾張票` setting with hard limit `0~4`.
-  - Added `重新整理時秒數` setting.
-  - If `+` is not found after area selection, flow waits `重新整理時秒數`, refreshes, and retries.
+  - Added `重新整理秒數` setting.
+  - If `+` is not found after area selection, flow waits `重新整理秒數`, refreshes, and retries.
   - Added `選區後延遲幾秒按+` setting for waiting before `+` clicks.
   - Added `選擇順序` setting: `top to bottom`, `bottom to top`, `middle`, `random`.
   - Area fallback logic:
@@ -55,7 +55,7 @@
     - `Start` triggers full flow with `下一步`.
     - `+` multi-click uses 50ms gap between each click.
     - After final `+`, waits 100ms then clicks `下一步`.
-    - After `下一步`, waits `重新整理時秒數` then loops next round.
+    - After `下一步`, waits `重新整理秒數` then loops next round.
 - Schedule controls
   - Added daily schedule settings in popup.
   - Can auto-start and auto-stop by `HH:MM:SS` time input (`type="time"` with `step="1"`).
