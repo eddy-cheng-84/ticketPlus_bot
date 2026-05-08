@@ -12,6 +12,7 @@
 
 ## Current Project Snapshot
 - Chrome extension with popup + content script workflow.
+- Domain guard: only works on `ticketplus.com.tw` and subdomains.
 - Main files:
   - `manifest.json` (MV3)
   - `background.js`

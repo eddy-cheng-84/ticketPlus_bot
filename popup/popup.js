@@ -13,16 +13,33 @@ const logBox = document.getElementById('logBox');
 
 const STORAGE_KEY = 'area_preferences_v1';
 let areaPreferences = [];
+const ALLOWED_HOST_SUFFIX = 'ticketplus.com.tw';
 
-async function getActiveTabId() {
+function isAllowedTicketplusUrl(url) {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === ALLOWED_HOST_SUFFIX || parsed.hostname.endsWith(`.${ALLOWED_HOST_SUFFIX}`);
+  } catch (_error) {
+    return false;
+  }
+}
+
+async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab?.id;
+  return tab;
 }
 
 async function sendToActiveTab(message) {
-  const tabId = await getActiveTabId();
+  const tab = await getActiveTab();
+  const tabId = tab?.id;
   if (!tabId) {
     return { ok: false, error: 'NO_ACTIVE_TAB' };
+  }
+  if (!isAllowedTicketplusUrl(tab.url || '')) {
+    return { ok: false, error: 'DOMAIN_NOT_ALLOWED' };
   }
 
   try {
@@ -244,6 +261,10 @@ async function refreshAreas() {
 async function refreshData() {
   const statusResult = await sendToActiveTab({ type: 'GET_BOT_STATUS' });
   if (!statusResult || !statusResult.ok) {
+    if (statusResult?.error === 'DOMAIN_NOT_ALLOWED') {
+      render(false, 10000, '僅支援 ticketplus.com.tw');
+      return;
+    }
     render(false, 10000, '此頁無法控制（請先重新整理目標頁）');
     return;
   }
