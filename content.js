@@ -1,6 +1,6 @@
 ﻿(() => {
   const INTERVAL_MS = 10000;
-  const MAX_LOGS = 200;
+  const MAX_LOGS = 2000;
   const LOOP_RETRY_DELAY_MS = 500;
   const PLUS_CLICK_DELAY_MS = 50;
   const AFTER_PLUS_BEFORE_NEXT_MS = 100;

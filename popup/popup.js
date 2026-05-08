@@ -124,7 +124,7 @@ function renderLogs(logs) {
     return;
   }
 
-  logBox.textContent = logs.slice(-80).join('\n');
+  logBox.textContent = logs.slice(-400).join('\n');
   logBox.scrollTop = logBox.scrollHeight;
 }
 
