@@ -668,6 +668,7 @@
     if (message.type === 'STOP_SCHEDULE') {
       scheduleState.enabled = false;
       scheduleState.lastTickSec = null;
+      stop();
       persistScheduleState();
       pushLog('排程已停止');
       sendResponse({ ok: true });

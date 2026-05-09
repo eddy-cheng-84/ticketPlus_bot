@@ -66,6 +66,7 @@
   - Uses explicit buttons: `儲存並排程` and `停止排程`.
   - Trigger logic runs in content script every second and fires only when crossing the target second (no immediate catch-up trigger for already-passed times).
   - Schedule state is persisted in `chrome.storage.local` and restored by content script.
+  - `停止排程` also stops current running flow loop immediately.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`
   - `CLICK_REFRESH_ONCE`, `CLICK_PANEL_BY_TEXT`, `CLICK_REFRESH_AND_PANEL_BY_TEXT`

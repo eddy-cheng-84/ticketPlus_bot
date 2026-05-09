@@ -82,6 +82,20 @@ function normalizeHmsTime(value) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
 }
 
+function hmsToSeconds(hms) {
+  const normalized = normalizeHmsTime(hms);
+  if (!normalized) {
+    return -1;
+  }
+  const [h, m, s] = normalized.split(':').map((x) => Number.parseInt(x, 10));
+  return h * 3600 + m * 60 + s;
+}
+
+function getCurrentSecondsOfDay() {
+  const now = new Date();
+  return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+}
+
 function buildAreaKey(rawText) {
   let key = normalizeText(rawText);
   key = key.replace(/剩餘\s*\d+/g, '');
@@ -490,7 +504,13 @@ saveScheduleBtn.addEventListener('click', async () => {
     return;
   }
   if (scheduleStatusEl) {
-    scheduleStatusEl.textContent = `排程: 啟用中（啟動 ${scheduleSettings.startTime} / 暫停 ${scheduleSettings.stopTime}）`;
+    const startSec = hmsToSeconds(scheduleSettings.startTime);
+    const nowSec = getCurrentSecondsOfDay();
+    if (startSec >= 0 && nowSec > startSec) {
+      scheduleStatusEl.textContent = `排程: 已啟用（今日啟動時間已過，明天 ${scheduleSettings.startTime} 觸發）`;
+    } else {
+      scheduleStatusEl.textContent = `排程: 啟用中（啟動 ${scheduleSettings.startTime} / 暫停 ${scheduleSettings.stopTime}）`;
+    }
   }
   await refreshData();
 });
