@@ -68,6 +68,7 @@
   - Schedule state is persisted in `chrome.storage.local` and restored by content script.
   - `停止排程` also stops current running flow loop immediately.
   - Re-saving schedule resets same-day trigger flags, so a second schedule update can trigger again today.
+  - Each loop pass auto-clicks `我知道了` buttons before refresh/selection steps.
 - Content script messaging API includes
   - `START_BOT`, `STOP_BOT`, `GET_BOT_STATUS`, `GET_BOT_LOGS`
   - `CLICK_REFRESH_ONCE`, `CLICK_PANEL_BY_TEXT`, `CLICK_REFRESH_AND_PANEL_BY_TEXT`

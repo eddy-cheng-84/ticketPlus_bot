@@ -41,6 +41,30 @@
     return null;
   }
 
+  function clickIKnowButtons() {
+    const spans = document.querySelectorAll('span.v-btn__content');
+    const clicked = new Set();
+    let count = 0;
+
+    for (const span of spans) {
+      const text = normalizeText(span.textContent || '');
+      if (text !== '我知道了') {
+        continue;
+      }
+      const button = span.closest('button, [role="button"], .v-btn');
+      if (!button || clicked.has(button)) {
+        continue;
+      }
+      clicked.add(button);
+      button.click();
+      count += 1;
+    }
+
+    if (count > 0) {
+      pushLog(`自動點擊成功：已點擊「我知道了」${count} 次`);
+    }
+  }
+
   function normalizeText(text) {
     return (text || '').replace(/\s+/g, ' ').trim();
   }
@@ -454,6 +478,8 @@
       if (isCancelled()) {
         return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
       }
+
+      clickIKnowButtons();
       attempt += 1;
       const refreshResult = clickRefreshOnce();
       if (!refreshResult.ok) {
