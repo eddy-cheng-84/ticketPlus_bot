@@ -4,6 +4,7 @@
   const LOOP_RETRY_DELAY_MS = 500;
   const PLUS_CLICK_DELAY_MS = 50;
   const AFTER_PLUS_BEFORE_NEXT_MS = 100;
+  const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
 
   let running = false;
   let timerId = null;
@@ -41,6 +42,47 @@
 
   function normalizeText(text) {
     return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function sanitizeScheduleOptions(options) {
+    return {
+      selectedTargets: Array.isArray(options?.selectedTargets)
+        ? options.selectedTargets.map((item) => buildAreaKey(item)).filter(Boolean)
+        : [],
+      orderMode: options?.orderMode || 'top_to_bottom',
+      plusCount: options?.plusCount,
+      refreshToAreaDelayMs: options?.refreshToAreaDelayMs,
+      areaToPlusDelayMs: options?.areaToPlusDelayMs
+    };
+  }
+
+  async function persistScheduleState() {
+    await chrome.storage.local.set({
+      [SCHEDULE_STATE_KEY]: {
+        enabled: scheduleState.enabled,
+        startTime: scheduleState.startTime,
+        stopTime: scheduleState.stopTime,
+        options: sanitizeScheduleOptions(scheduleState.options)
+      }
+    });
+  }
+
+  async function loadScheduleStateFromStorage() {
+    const result = await chrome.storage.local.get(SCHEDULE_STATE_KEY);
+    const saved = result?.[SCHEDULE_STATE_KEY];
+    if (!saved || typeof saved !== 'object') {
+      return;
+    }
+    const startTime = normalizeHmsTime(saved.startTime || '');
+    const stopTime = normalizeHmsTime(saved.stopTime || '');
+    if (!startTime || !stopTime) {
+      return;
+    }
+    scheduleState.enabled = Boolean(saved.enabled);
+    scheduleState.startTime = startTime;
+    scheduleState.stopTime = stopTime;
+    scheduleState.options = sanitizeScheduleOptions(saved.options);
+    scheduleState.lastTickSec = timeHmsToSeconds(getCurrentTimeHms());
   }
 
   function buildAreaKey(rawText) {
@@ -614,15 +656,10 @@
       scheduleState.startTime = startTime;
       scheduleState.stopTime = stopTime;
       scheduleState.options = {
-        selectedTargets: Array.isArray(message.selectedTargets)
-          ? message.selectedTargets.map((item) => buildAreaKey(item)).filter(Boolean)
-          : [],
-        orderMode: message.orderMode || 'top_to_bottom',
-        plusCount: message.plusCount,
-        refreshToAreaDelayMs: message.refreshToAreaDelayMs,
-        areaToPlusDelayMs: message.areaToPlusDelayMs
+        ...sanitizeScheduleOptions(message)
       };
       scheduleState.lastTickSec = timeHmsToSeconds(getCurrentTimeHms());
+      persistScheduleState();
       pushLog(`排程已啟用：${startTime} 啟動 / ${stopTime} 暫停`);
       sendResponse({ ok: true });
       return;
@@ -631,11 +668,13 @@
     if (message.type === 'STOP_SCHEDULE') {
       scheduleState.enabled = false;
       scheduleState.lastTickSec = null;
+      persistScheduleState();
       pushLog('排程已停止');
       sendResponse({ ok: true });
     }
   });
 
+  loadScheduleStateFromStorage();
   scheduleTimerId = window.setInterval(checkScheduleTick, 1000);
   pushLog('內容腳本已載入，等待指令');
   console.log('[ticket_plus_bot] content script ready:', window.location.href);
