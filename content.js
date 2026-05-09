@@ -7,6 +7,7 @@
   const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
 
   let running = false;
+  let runGeneration = 0;
   let timerId = null;
   let autoTargets = [];
   let startOptions = {};
@@ -248,9 +249,16 @@
   }
 
   async function runLoopMode() {
+    const generation = runGeneration;
     while (running) {
+      if (generation !== runGeneration) {
+        return;
+      }
       const flowResult = await runPurchaseFlow(startOptions, { includeNextStep: true });
       if (!running) {
+        return;
+      }
+      if (generation !== runGeneration) {
         return;
       }
       if (!flowResult.ok) {
@@ -279,6 +287,7 @@
       areaToPlusDelayMs: options.areaToPlusDelayMs
     };
     running = true;
+    runGeneration += 1;
     pushLog(`已啟動流程 loop，目標數：${autoTargets.length}`);
     runLoopMode();
     console.log('[ticket_plus_bot] flow loop started');
@@ -423,6 +432,8 @@
   }
 
   async function runPurchaseFlow(options = {}, runtimeOptions = {}) {
+    const generation = runGeneration;
+    const isCancelled = () => runtimeOptions.includeNextStep && generation !== runGeneration;
     const plusCountParsed = Number.parseInt(String(options.plusCount || '1'), 10);
     const plusCount = Number.isFinite(plusCountParsed)
       ? Math.min(4, Math.max(0, plusCountParsed))
@@ -440,6 +451,9 @@
       if (!running && runtimeOptions.includeNextStep) {
         return { ok: false, step: 'stopped', error: 'LOOP_STOPPED' };
       }
+      if (isCancelled()) {
+        return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+      }
       attempt += 1;
       const refreshResult = clickRefreshOnce();
       if (!refreshResult.ok) {
@@ -449,6 +463,9 @@
       if (refreshToAreaDelayMs > 0) {
         pushLog(`流程等待：重新整理時秒數 ${refreshToAreaDelayMs}ms`);
         await sleep(refreshToAreaDelayMs);
+        if (isCancelled()) {
+          return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+        }
       }
 
       panelResult = selectPanelForFlow(
@@ -466,17 +483,26 @@
       if (areaToPlusDelayMs > 0) {
         pushLog(`流程等待：選區後延遲 ${areaToPlusDelayMs}ms`);
         await sleep(areaToPlusDelayMs);
+        if (isCancelled()) {
+          return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+        }
       }
 
       const plusResult = await clickPlusTimes(plusCount);
       if (plusResult.ok) {
         if (runtimeOptions.includeNextStep) {
           await sleep(AFTER_PLUS_BEFORE_NEXT_MS);
+          if (isCancelled()) {
+            return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+          }
           const nextResult = clickNextStepButton();
           if (!nextResult.ok) {
             return { ok: false, step: 'next_step', error: nextResult.error };
           }
           await sleep(refreshToAreaDelayMs);
+          if (isCancelled()) {
+            return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+          }
         }
         pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +' + (runtimeOptions.includeNextStep ? ' -> 下一步' : ''));
         return {
@@ -506,6 +532,7 @@
     }
 
     running = false;
+    runGeneration += 1;
     if (timerId !== null) {
       window.clearInterval(timerId);
       timerId = null;
@@ -658,6 +685,8 @@
       scheduleState.options = {
         ...sanitizeScheduleOptions(message)
       };
+      scheduleState.lastStartDate = '';
+      scheduleState.lastStopDate = '';
       scheduleState.lastTickSec = timeHmsToSeconds(getCurrentTimeHms());
       persistScheduleState();
       pushLog(`排程已啟用：${startTime} 啟動 / ${stopTime} 暫停`);
