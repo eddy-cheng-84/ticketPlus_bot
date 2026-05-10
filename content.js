@@ -5,6 +5,7 @@
   const PLUS_CLICK_DELAY_MS = 50;
   const AFTER_PLUS_BEFORE_NEXT_MS = 100;
   const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
+  const BOT_RUNTIME_KEY = 'bot_runtime_state_v1';
 
   let running = false;
   let runGeneration = 0;
@@ -79,6 +80,48 @@
       refreshToAreaDelayMs: options?.refreshToAreaDelayMs,
       areaToPlusDelayMs: options?.areaToPlusDelayMs
     };
+  }
+
+  function sanitizeRunOptions(options) {
+    return {
+      selectedTargets: Array.isArray(options?.selectedTargets)
+        ? options.selectedTargets.map((item) => buildAreaKey(item)).filter(Boolean)
+        : [],
+      orderMode: options?.orderMode || 'top_to_bottom',
+      plusCount: options?.plusCount,
+      refreshToAreaDelayMs: options?.refreshToAreaDelayMs,
+      areaToPlusDelayMs: options?.areaToPlusDelayMs
+    };
+  }
+
+  async function persistBotRuntimeState() {
+    await chrome.storage.local.set({
+      [BOT_RUNTIME_KEY]: {
+        running,
+        options: sanitizeRunOptions(startOptions)
+      }
+    });
+  }
+
+  async function clearBotRuntimeState() {
+    await chrome.storage.local.set({
+      [BOT_RUNTIME_KEY]: {
+        running: false,
+        options: {}
+      }
+    });
+  }
+
+  async function loadBotRuntimeState() {
+    const result = await chrome.storage.local.get(BOT_RUNTIME_KEY);
+    const saved = result?.[BOT_RUNTIME_KEY];
+    if (!saved || typeof saved !== 'object' || !saved.running) {
+      return;
+    }
+
+    const restoredOptions = sanitizeRunOptions(saved.options);
+    start(restoredOptions);
+    pushLog('已從儲存狀態恢復流程執行');
   }
 
   async function persistScheduleState() {
@@ -303,15 +346,16 @@
     autoTargets = Array.isArray(options.selectedTargets)
       ? options.selectedTargets.map((item) => buildAreaKey(item)).filter(Boolean)
       : [];
-    startOptions = {
+    startOptions = sanitizeRunOptions({
       selectedTargets: autoTargets,
       orderMode: options.orderMode || 'top_to_bottom',
       plusCount: options.plusCount,
       refreshToAreaDelayMs: options.refreshToAreaDelayMs,
       areaToPlusDelayMs: options.areaToPlusDelayMs
-    };
+    });
     running = true;
     runGeneration += 1;
+    persistBotRuntimeState();
     pushLog(`已啟動流程 loop，目標數：${autoTargets.length}`);
     runLoopMode();
     console.log('[ticket_plus_bot] flow loop started');
@@ -559,6 +603,7 @@
 
     running = false;
     runGeneration += 1;
+    clearBotRuntimeState();
     if (timerId !== null) {
       window.clearInterval(timerId);
       timerId = null;
@@ -731,6 +776,7 @@
   });
 
   loadScheduleStateFromStorage();
+  loadBotRuntimeState();
   scheduleTimerId = window.setInterval(checkScheduleTick, 1000);
   pushLog('內容腳本已載入，等待指令');
   console.log('[ticket_plus_bot] content script ready:', window.location.href);

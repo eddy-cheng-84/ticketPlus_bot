@@ -30,6 +30,7 @@
   - Tick behavior: click `更新票數`; then try selected seat areas by priority.
   - Log buffer increased to 2000 entries; popup displays latest 400 entries.
   - Popup has `自動捲動 Log` toggle (default on).
+  - Bot runtime state (`running + flow options`) is persisted and auto-restored after page reload/navigation.
 - Manual actions in popup
   - Individual manual action buttons were removed from popup UI.
   - Main operation path is now the one-click flow plus start/stop loop controls.
