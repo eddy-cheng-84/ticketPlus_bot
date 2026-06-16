@@ -8,6 +8,7 @@ const DEFAULT_EXTERNAL_TRIGGER_SETTINGS = {
   method: 'GET',
   intervalSec: 1
 };
+const EXTERNAL_TRIGGER_FETCH_TIMEOUT_MS = 3000;
 
 let pollInFlight = null;
 let lastPollAt = 0;
@@ -96,12 +97,18 @@ function parseTriggerResponse(payload) {
 }
 
 async function fetchTriggerPayload(settings) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, EXTERNAL_TRIGGER_FETCH_TIMEOUT_MS);
+
   const init = {
     method: settings.method,
     headers: {
       Accept: 'application/json, text/plain;q=0.9, */*;q=0.8'
     },
-    cache: 'no-store'
+    cache: 'no-store',
+    signal: controller.signal
   };
 
   if (settings.method === 'POST') {
@@ -113,17 +120,26 @@ async function fetchTriggerPayload(settings) {
     });
   }
 
-  const response = await fetch(settings.url, init);
-  if (!response.ok) {
-    throw new Error(`HTTP_${response.status}`);
-  }
+  try {
+    const response = await fetch(settings.url, init);
+    if (!response.ok) {
+      throw new Error(`HTTP_${response.status}`);
+    }
 
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    return response.json();
-  }
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return response.json();
+    }
 
-  return response.text();
+    return response.text();
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('FETCH_TIMEOUT');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function findTicketplusTab() {
@@ -234,6 +250,10 @@ async function runExternalTriggerCheck(options = {}) {
 }
 
 async function performSerializedExternalTriggerCheck(options = {}) {
+  if (options.force) {
+    return runExternalTriggerCheck(options);
+  }
+
   if (!pollInFlight) {
     pollInFlight = runExternalTriggerCheck(options).finally(() => {
       pollInFlight = null;
