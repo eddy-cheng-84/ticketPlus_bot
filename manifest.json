@@ -20,7 +20,9 @@
   ],
   "host_permissions": [
     "https://ticketplus.com.tw/*",
-    "https://*.ticketplus.com.tw/*"
+    "https://*.ticketplus.com.tw/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
   "content_scripts": [
     {

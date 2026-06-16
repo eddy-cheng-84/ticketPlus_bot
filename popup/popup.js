@@ -11,6 +11,13 @@ const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
 const areaOrderModeEl = document.getElementById('areaOrderMode');
 const scheduleStartTimeEl = document.getElementById('scheduleStartTime');
 const scheduleStopTimeEl = document.getElementById('scheduleStopTime');
+const externalTriggerEnabledEl = document.getElementById('externalTriggerEnabled');
+const externalTriggerUrlEl = document.getElementById('externalTriggerUrl');
+const externalTriggerMethodEl = document.getElementById('externalTriggerMethod');
+const externalTriggerIntervalSecEl = document.getElementById('externalTriggerIntervalSec');
+const saveExternalTriggerBtn = document.getElementById('saveExternalTriggerBtn');
+const testExternalTriggerBtn = document.getElementById('testExternalTriggerBtn');
+const externalTriggerStatusEl = document.getElementById('externalTriggerStatus');
 const autoScrollLogEl = document.getElementById('autoScrollLog');
 const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
@@ -18,6 +25,7 @@ const logBox = document.getElementById('logBox');
 const STORAGE_KEY = 'area_preferences_v1';
 const SCHEDULE_KEY = 'schedule_settings_v1';
 const FLOW_SETTINGS_KEY = 'flow_settings_v1';
+const EXTERNAL_TRIGGER_SETTINGS_KEY = 'external_trigger_settings_v1';
 const ALLOWED_HOST_SUFFIX = 'ticketplus.com.tw';
 
 let areaPreferences = [];
@@ -27,6 +35,12 @@ let flowSettings = {
   refreshDelaySec: 1.5,
   areaDelaySec: 0.3,
   orderMode: 'top_to_bottom'
+};
+let externalTriggerSettings = {
+  enabled: false,
+  url: 'http://127.0.0.1:16888/trigger',
+  method: 'GET',
+  intervalSec: 1
 };
 
 function isAllowedTicketplusUrl(url) {
@@ -158,6 +172,29 @@ async function loadFlowSettings() {
   };
 }
 
+async function loadExternalTriggerSettings() {
+  const result = await chrome.storage.local.get(EXTERNAL_TRIGGER_SETTINGS_KEY);
+  const saved = result?.[EXTERNAL_TRIGGER_SETTINGS_KEY];
+  if (!saved || typeof saved !== 'object') {
+    externalTriggerSettings = {
+      enabled: false,
+      url: 'http://127.0.0.1:16888/trigger',
+      method: 'GET',
+      intervalSec: 1
+    };
+    return;
+  }
+
+  const method = typeof saved.method === 'string' ? saved.method.toUpperCase() : 'GET';
+  const intervalSec = Number.parseFloat(String(saved.intervalSec ?? '1'));
+  externalTriggerSettings = {
+    enabled: Boolean(saved.enabled),
+    url: typeof saved.url === 'string' && saved.url.trim() ? saved.url.trim() : 'http://127.0.0.1:16888/trigger',
+    method: method === 'POST' ? 'POST' : 'GET',
+    intervalSec: Number.isFinite(intervalSec) && intervalSec >= 0.5 ? intervalSec : 1
+  };
+}
+
 async function saveFlowSettings() {
   const ticketCount = Number.parseInt(ticketCountInput?.value || '1', 10);
   const refreshDelaySec = Number.parseFloat(refreshToAreaDelaySecInput?.value || '1.5');
@@ -183,6 +220,44 @@ function hydrateFlowSettingsUi() {
   refreshToAreaDelaySecInput.value = String(flowSettings.refreshDelaySec);
   areaToPlusDelaySecInput.value = String(flowSettings.areaDelaySec);
   areaOrderModeEl.value = flowSettings.orderMode;
+}
+
+function renderExternalTriggerStatus(message) {
+  if (externalTriggerStatusEl) {
+    externalTriggerStatusEl.textContent = message;
+  }
+}
+
+function hydrateExternalTriggerSettingsUi() {
+  externalTriggerEnabledEl.checked = externalTriggerSettings.enabled;
+  externalTriggerUrlEl.value = externalTriggerSettings.url;
+  externalTriggerMethodEl.value = externalTriggerSettings.method;
+  externalTriggerIntervalSecEl.value = String(externalTriggerSettings.intervalSec);
+  renderExternalTriggerStatus(
+    externalTriggerSettings.enabled
+      ? `外部觸發已啟用：${externalTriggerSettings.method} ${externalTriggerSettings.url}`
+      : '外部觸發未啟用'
+  );
+}
+
+async function saveExternalTriggerSettings() {
+  const intervalSec = Number.parseFloat(externalTriggerIntervalSecEl?.value || '1');
+  externalTriggerSettings = {
+    enabled: Boolean(externalTriggerEnabledEl?.checked),
+    url: (externalTriggerUrlEl?.value || '').trim() || 'http://127.0.0.1:16888/trigger',
+    method: (externalTriggerMethodEl?.value || 'GET').toUpperCase() === 'POST' ? 'POST' : 'GET',
+    intervalSec: Number.isFinite(intervalSec) && intervalSec >= 0.5 ? intervalSec : 1
+  };
+
+  externalTriggerUrlEl.value = externalTriggerSettings.url;
+  externalTriggerMethodEl.value = externalTriggerSettings.method;
+  externalTriggerIntervalSecEl.value = String(externalTriggerSettings.intervalSec);
+  await chrome.storage.local.set({ [EXTERNAL_TRIGGER_SETTINGS_KEY]: externalTriggerSettings });
+  renderExternalTriggerStatus(
+    externalTriggerSettings.enabled
+      ? `外部觸發已儲存：${externalTriggerSettings.method} ${externalTriggerSettings.url}`
+      : '外部觸發已停用'
+  );
 }
 
 function render(running, intervalMs, errorText = '') {
@@ -545,13 +620,41 @@ areaOrderModeEl.addEventListener('change', async () => {
   await saveFlowSettings();
 });
 
+saveExternalTriggerBtn.addEventListener('click', async () => {
+  await saveExternalTriggerSettings();
+});
+
+testExternalTriggerBtn.addEventListener('click', async () => {
+  renderExternalTriggerStatus('外部觸發測試中...');
+  const result = await chrome.runtime.sendMessage({ type: 'CHECK_EXTERNAL_TRIGGER_NOW' });
+  if (!result || !result.ok) {
+    renderExternalTriggerStatus(`測試失敗: ${result?.error || 'UNKNOWN_ERROR'}`);
+    return;
+  }
+  if (!result.enabled) {
+    renderExternalTriggerStatus('測試完成：目前未啟用外部觸發');
+    return;
+  }
+  if (result.triggered && result.started) {
+    renderExternalTriggerStatus('測試完成：已收到觸發並啟動流程');
+    return;
+  }
+  if (result.triggered) {
+    renderExternalTriggerStatus(`測試完成：有觸發，但未重新啟動（${result.reason || '已在執行中'}）`);
+    return;
+  }
+  renderExternalTriggerStatus('測試完成：目前沒有收到外部觸發');
+});
+
 async function init() {
   await loadAreaPreferences();
   await loadScheduleSettings();
   await loadFlowSettings();
+  await loadExternalTriggerSettings();
   renderAreaList();
   hydrateScheduleSettingsUi();
   hydrateFlowSettingsUi();
+  hydrateExternalTriggerSettingsUi();
   await syncAutoTargets();
   await refreshData();
   await refreshAreas();

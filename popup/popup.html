@@ -44,6 +44,30 @@
           <button id="saveScheduleBtn" class="manual">儲存並排程</button>
           <button id="stopScheduleBtn" class="stop">停止排程</button>
         </section>
+        <section class="flow-settings">
+          <label class="keyword-label">
+            <input id="externalTriggerEnabled" type="checkbox" />
+            啟用外部 HTTP 觸發
+          </label>
+          <label for="externalTriggerUrl" class="keyword-label">觸發 URL</label>
+          <input
+            id="externalTriggerUrl"
+            class="keyword-input"
+            type="text"
+            value="http://127.0.0.1:16888/trigger"
+            placeholder="http://127.0.0.1:16888/trigger"
+          />
+          <label for="externalTriggerMethod" class="keyword-label">請求方法</label>
+          <select id="externalTriggerMethod" class="keyword-input">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+          </select>
+          <label for="externalTriggerIntervalSec" class="keyword-label">輪詢秒數</label>
+          <input id="externalTriggerIntervalSec" class="keyword-input" type="number" min="0.5" step="0.5" value="1" />
+          <button id="saveExternalTriggerBtn" class="manual">儲存外部觸發設定</button>
+          <button id="testExternalTriggerBtn" class="manual secondary">立即測試外部觸發</button>
+          <p id="externalTriggerStatus">外部觸發未啟用</p>
+        </section>
       </section>
       <section class="log-wrap">
         <div class="log-title">Log</div>

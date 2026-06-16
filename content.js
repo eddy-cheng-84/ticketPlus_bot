@@ -639,12 +639,21 @@
     scheduleState.lastTickSec = nowSec;
   }
 
+  function pollExternalTrigger() {
+    chrome.runtime.sendMessage({ type: 'POLL_EXTERNAL_TRIGGER' }, (_response) => {
+      void chrome.runtime.lastError;
+    });
+  }
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || typeof message !== 'object') {
       return;
     }
 
     if (message.type === 'START_BOT') {
+      if (message.source === 'external_http_trigger') {
+        pushLog('外部觸發：收到 HTTP 啟動信號');
+      }
       start(message);
       sendResponse({ ok: true, running: true, targets: autoTargets });
       return;
@@ -778,6 +787,8 @@
   loadScheduleStateFromStorage();
   loadBotRuntimeState();
   scheduleTimerId = window.setInterval(checkScheduleTick, 1000);
+  window.setInterval(pollExternalTrigger, 1000);
+  pollExternalTrigger();
   pushLog('內容腳本已載入，等待指令');
   console.log('[ticket_plus_bot] content script ready:', window.location.href);
 })();
