@@ -142,15 +142,15 @@ async function fetchTriggerPayload(settings) {
   }
 }
 
-async function findTicketplusTab() {
+async function findTicketplusTabs() {
   const tabs = await chrome.tabs.query({
     url: ['https://ticketplus.com.tw/*', 'https://*.ticketplus.com.tw/*']
   });
   if (!Array.isArray(tabs) || tabs.length === 0) {
-    return null;
+    return [];
   }
 
-  return tabs.find((tab) => tab.active) || tabs[0];
+  return tabs;
 }
 
 async function getTabStatus(tabId) {
@@ -162,17 +162,9 @@ async function getTabStatus(tabId) {
 }
 
 async function startBotFromExternalTrigger(overrides = {}) {
-  const tab = await findTicketplusTab();
-  if (!tab?.id) {
+  const tabs = await findTicketplusTabs();
+  if (tabs.length === 0) {
     return { ok: false, error: 'NO_TICKETPLUS_TAB' };
-  }
-
-  const currentStatus = await getTabStatus(tab.id);
-  if (!currentStatus?.ok) {
-    return { ok: false, error: 'CONTENT_SCRIPT_UNAVAILABLE' };
-  }
-  if (currentStatus.running) {
-    return { ok: true, started: false, reason: 'ALREADY_RUNNING' };
   }
 
   const selectedTargets = Array.isArray(overrides.selectedTargets)
@@ -194,12 +186,50 @@ async function startBotFromExternalTrigger(overrides = {}) {
       : flowSettings.areaToPlusDelayMs
   };
 
-  const result = await chrome.tabs.sendMessage(tab.id, startMessage);
-  if (!result?.ok) {
-    return { ok: false, error: result?.error || 'START_FAILED' };
+  let startedCount = 0;
+  let alreadyRunningCount = 0;
+  let unavailableCount = 0;
+  const startedTabIds = [];
+
+  for (const tab of tabs) {
+    if (!tab?.id) {
+      continue;
+    }
+
+    const currentStatus = await getTabStatus(tab.id);
+    if (!currentStatus?.ok) {
+      unavailableCount += 1;
+      continue;
+    }
+
+    if (currentStatus.running) {
+      alreadyRunningCount += 1;
+      continue;
+    }
+
+    const result = await chrome.tabs.sendMessage(tab.id, startMessage);
+    if (result?.ok) {
+      startedCount += 1;
+      startedTabIds.push(tab.id);
+      continue;
+    }
+
+    unavailableCount += 1;
   }
 
-  return { ok: true, started: true, tabId: tab.id };
+  if (startedCount === 0 && alreadyRunningCount === 0) {
+    return { ok: false, error: 'CONTENT_SCRIPT_UNAVAILABLE' };
+  }
+
+  return {
+    ok: true,
+    started: startedCount > 0,
+    startedCount,
+    alreadyRunningCount,
+    unavailableCount,
+    tabIds: startedTabIds,
+    reason: startedCount > 0 ? '' : 'ALREADY_RUNNING'
+  };
 }
 
 async function runExternalTriggerCheck(options = {}) {
