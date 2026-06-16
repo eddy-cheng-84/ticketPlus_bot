@@ -260,6 +260,39 @@ async function saveExternalTriggerSettings() {
   );
 }
 
+async function armExternalTriggerTest() {
+  const baseUrl = (externalTriggerUrlEl?.value || '').trim() || 'http://127.0.0.1:16888/trigger';
+  const method = (externalTriggerMethodEl?.value || 'GET').toUpperCase() === 'POST' ? 'POST' : 'GET';
+
+  if (method === 'GET') {
+    const url = new URL(baseUrl);
+    url.searchParams.set('fire', '1');
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      cache: 'no-store'
+    });
+    if (!response.ok) {
+      throw new Error(`ARM_HTTP_${response.status}`);
+    }
+    return;
+  }
+
+  const response = await fetch(baseUrl, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      trigger: true,
+      id: `panel-test-${Date.now()}`
+    })
+  });
+  if (!response.ok) {
+    throw new Error(`ARM_HTTP_${response.status}`);
+  }
+}
+
 function render(running, intervalMs, errorText = '') {
   if (errorText) {
     statusEl.textContent = `狀態: ${errorText}`;
@@ -626,6 +659,12 @@ saveExternalTriggerBtn.addEventListener('click', async () => {
 
 testExternalTriggerBtn.addEventListener('click', async () => {
   renderExternalTriggerStatus('外部觸發測試中...');
+  try {
+    await armExternalTriggerTest();
+  } catch (error) {
+    renderExternalTriggerStatus(`測試失敗: ${error?.message || 'ARM_FAILED'}`);
+    return;
+  }
   const result = await chrome.runtime.sendMessage({ type: 'CHECK_EXTERNAL_TRIGGER_NOW' });
   if (!result || !result.ok) {
     renderExternalTriggerStatus(`測試失敗: ${result?.error || 'UNKNOWN_ERROR'}`);
