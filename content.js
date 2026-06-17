@@ -4,6 +4,7 @@
   const LOOP_RETRY_DELAY_MS = 500;
   const PLUS_CLICK_DELAY_MS = 50;
   const AFTER_PLUS_BEFORE_NEXT_MS = 100;
+  const QUEUE_WAIT_POLL_MS = 1000;
   const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
   const BOT_RUNTIME_KEY = 'bot_runtime_state_v1';
 
@@ -543,6 +544,37 @@
     return { ok: false, error: 'NEXT_STEP_NOT_FOUND' };
   }
 
+  function isWaitingRoomPage() {
+    const text = normalizeText(document.body?.innerText || '');
+    if (!text) {
+      return false;
+    }
+
+    return text.includes('請別離開頁面') && text.includes('同時使用多個裝置及視窗購票');
+  }
+
+  async function waitForWaitingRoomToFinish(isCancelled) {
+    if (!isWaitingRoomPage()) {
+      return { ok: true, waited: false };
+    }
+
+    const startHref = window.location.href;
+    pushLog('偵測到排隊等待頁，暫停操作並等待自動跳轉');
+
+    while (true) {
+      if (typeof isCancelled === 'function' && isCancelled()) {
+        return { ok: false, error: 'LOOP_CANCELLED' };
+      }
+
+      await sleep(QUEUE_WAIT_POLL_MS);
+
+      if (!isWaitingRoomPage()) {
+        pushLog('排隊等待頁已結束，恢復後續流程');
+        return { ok: true, waited: true, redirected: window.location.href !== startHref };
+      }
+    }
+  }
+
   function sleep(ms) {
     return new Promise((resolve) => {
       window.setTimeout(resolve, ms);
@@ -621,6 +653,10 @@
           const nextResult = clickNextStepButton();
           if (!nextResult.ok) {
             return { ok: false, step: 'next_step', error: nextResult.error };
+          }
+          const queueWaitResult = await waitForWaitingRoomToFinish(isCancelled);
+          if (!queueWaitResult.ok) {
+            return { ok: false, step: 'queue_wait', error: queueWaitResult.error };
           }
           await sleep(refreshToAreaDelayMs);
           if (isCancelled()) {
