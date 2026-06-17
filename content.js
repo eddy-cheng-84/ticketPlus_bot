@@ -5,6 +5,7 @@
   const PLUS_CLICK_DELAY_MS = 50;
   const AFTER_PLUS_BEFORE_NEXT_MS = 100;
   const QUEUE_WAIT_POLL_MS = 1000;
+  const PANEL_OBSERVE_INTERVAL_MS = 150;
   const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
   const BOT_RUNTIME_KEY = 'bot_runtime_state_v1';
 
@@ -301,6 +302,64 @@
     return areas;
   }
 
+  function buildEntriesSnapshot(entries) {
+    return entries
+      .map((entry) => `${entry.key}|${entry.remaining ?? 'null'}`)
+      .join('||');
+  }
+
+  async function observePanelEntriesDuringDelay(delayMs, isCancelled) {
+    const totalDelayMs = Number.isFinite(delayMs) && delayMs > 0 ? delayMs : 0;
+    if (totalDelayMs <= 0) {
+      return {
+        entries: getPanelEntries(),
+        observedCount: 1,
+        stableCount: 0
+      };
+    }
+
+    const startedAt = Date.now();
+    let latestEntries = getPanelEntries();
+    let latestSignature = buildEntriesSnapshot(latestEntries);
+    let lastNonEmptyEntries = latestEntries.length > 0 ? latestEntries : [];
+    let stableCount = 0;
+    let observedCount = 1;
+
+    while (Date.now() - startedAt < totalDelayMs) {
+      if (typeof isCancelled === 'function' && isCancelled()) {
+        return {
+          entries: lastNonEmptyEntries,
+          observedCount,
+          stableCount,
+          cancelled: true
+        };
+      }
+
+      await sleep(Math.min(PANEL_OBSERVE_INTERVAL_MS, totalDelayMs));
+      const nextEntries = getPanelEntries();
+      const nextSignature = buildEntriesSnapshot(nextEntries);
+      observedCount += 1;
+
+      if (nextEntries.length > 0) {
+        lastNonEmptyEntries = nextEntries;
+      }
+
+      if (nextSignature === latestSignature) {
+        stableCount += 1;
+      } else {
+        stableCount = 0;
+        latestEntries = nextEntries;
+        latestSignature = nextSignature;
+      }
+    }
+
+    return {
+      entries: lastNonEmptyEntries.length > 0 ? lastNonEmptyEntries : latestEntries,
+      observedCount,
+      stableCount
+    };
+  }
+
   function clickFirstAvailableAutoTarget() {
     if (!Array.isArray(autoTargets) || autoTargets.length === 0) {
       return { ok: false, error: 'NO_AUTO_TARGETS' };
@@ -470,8 +529,8 @@
     return { ok: true, clicked: times };
   }
 
-  function selectPanelForFlow(selectedTargetKeys, orderMode) {
-    const entries = getPanelEntries();
+  function selectPanelForFlow(selectedTargetKeys, orderMode, providedEntries = null) {
+    const entries = Array.isArray(providedEntries) ? providedEntries : getPanelEntries();
     if (entries.length === 0) {
       return { ok: false, error: 'NO_PANEL_ENTRIES' };
     }
@@ -509,17 +568,22 @@
     }
 
     const picked = chooseEntryByOrder(candidates, orderMode);
-    if (!picked || !picked.button) {
+    if (!picked) {
       return { ok: false, error: 'NO_CANDIDATE_PICKED' };
     }
 
-    picked.button.click();
+    const liveTarget = findPanelButtonByText(picked.key) || findPanelButtonByText(picked.label);
+    if (!liveTarget) {
+      return { ok: false, error: 'PANEL_BUTTON_STALE' };
+    }
+
+    liveTarget.click();
     pushLog(`流程點擊票區成功：「${picked.label}」`);
     return {
       ok: true,
       matched: picked.key,
       matchedLabel: picked.label,
-      panelElement: picked.button.closest('div.v-expansion-panel')
+      panelElement: liveTarget.closest('div.v-expansion-panel')
     };
   }
 
@@ -614,16 +678,24 @@
 
       if (refreshToAreaDelayMs > 0) {
         pushLog(`流程等待：重新整理時秒數 ${refreshToAreaDelayMs}ms`);
-        await sleep(refreshToAreaDelayMs);
+        const observed = await observePanelEntriesDuringDelay(refreshToAreaDelayMs, isCancelled);
+        if (observed.cancelled) {
+          return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+        }
         if (isCancelled()) {
           return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
         }
+        panelResult = selectPanelForFlow(
+          options.selectedTargets || [],
+          options.orderMode || 'top_to_bottom',
+          observed.entries
+        );
+      } else {
+        panelResult = selectPanelForFlow(
+          options.selectedTargets || [],
+          options.orderMode || 'top_to_bottom'
+        );
       }
-
-      panelResult = selectPanelForFlow(
-        options.selectedTargets || [],
-        options.orderMode || 'top_to_bottom'
-      );
       if (!panelResult.ok) {
         if (
           panelResult.error === 'DESIRED_TARGETS_UNAVAILABLE' ||
