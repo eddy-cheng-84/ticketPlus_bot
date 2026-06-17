@@ -389,31 +389,67 @@
     return { ok: true };
   }
 
-  function clickPlusOnActivePanel() {
+  function findPlusButtonInContainer(container) {
+    if (!container) {
+      return null;
+    }
+
+    const plusButtons = container.querySelectorAll('button:has(i.mdi.mdi-plus), button i.mdi.mdi-plus');
+    for (const candidate of plusButtons) {
+      const button = candidate.tagName === 'BUTTON' ? candidate : candidate.closest('button');
+      if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') {
+        continue;
+      }
+      return button;
+    }
+
+    const plusIcon = container.querySelector('i.mdi.mdi-plus');
+    if (!plusIcon) {
+      return null;
+    }
+
+    const plusButton = plusIcon.closest('button');
+    if (!plusButton || plusButton.disabled || plusButton.getAttribute('aria-disabled') === 'true') {
+      return null;
+    }
+
+    return plusButton;
+  }
+
+  function clickPlusOnActivePanel(panelContext = null) {
+    const searchContainers = [];
+    if (panelContext) {
+      searchContainers.push(panelContext);
+    }
+
     const activePanel = document.querySelector('div.v-expansion-panel.v-expansion-panel--active');
-    if (!activePanel) {
+    if (activePanel && activePanel !== panelContext) {
+      searchContainers.push(activePanel);
+    }
+
+    searchContainers.push(document);
+
+    for (const container of searchContainers) {
+      const plusButton = findPlusButtonInContainer(container);
+      if (!plusButton) {
+        continue;
+      }
+
+      plusButton.click();
+      pushLog('手動點擊成功：已點擊 + 按鈕');
+      return { ok: true };
+    }
+
+    if (!activePanel && !panelContext) {
       pushLog('手動點擊失敗：找不到展開中的票區');
       return { ok: false, error: 'ACTIVE_PANEL_NOT_FOUND' };
     }
 
-    const plusIcon = activePanel.querySelector('i.mdi.mdi-plus');
-    if (!plusIcon) {
-      pushLog('手動點擊失敗：找不到 + 圖示');
-      return { ok: false, error: 'PLUS_ICON_NOT_FOUND' };
-    }
-
-    const plusButton = plusIcon.closest('button');
-    if (!plusButton) {
-      pushLog('手動點擊失敗：找不到 + 按鈕');
-      return { ok: false, error: 'PLUS_BUTTON_NOT_FOUND' };
-    }
-
-    plusButton.click();
-    pushLog('手動點擊成功：已點擊 + 按鈕');
-    return { ok: true };
+    pushLog('手動點擊失敗：找不到 + 圖示');
+    return { ok: false, error: 'PLUS_ICON_NOT_FOUND' };
   }
 
-  async function clickPlusTimes(count) {
+  async function clickPlusTimes(count, panelContext = null) {
     const normalizedCount = Number.isFinite(count) ? count : 1;
     const times = Math.min(4, Math.max(0, normalizedCount));
     if (times === 0) {
@@ -421,7 +457,7 @@
       return { ok: true, clicked: 0 };
     }
     for (let i = 0; i < times; i += 1) {
-      const result = clickPlusOnActivePanel();
+      const result = clickPlusOnActivePanel(panelContext);
       if (!result.ok) {
         return { ok: false, error: result.error, clicked: i };
       }
@@ -478,7 +514,12 @@
 
     picked.button.click();
     pushLog(`流程點擊票區成功：「${picked.label}」`);
-    return { ok: true, matched: picked.key, matchedLabel: picked.label };
+    return {
+      ok: true,
+      matched: picked.key,
+      matchedLabel: picked.label,
+      panelElement: picked.button.closest('div.v-expansion-panel')
+    };
   }
 
   function clickNextStepButton() {
@@ -570,7 +611,7 @@
         }
       }
 
-      const plusResult = await clickPlusTimes(plusCount);
+      const plusResult = await clickPlusTimes(plusCount, panelResult.panelElement || null);
       if (plusResult.ok) {
         if (runtimeOptions.includeNextStep) {
           await sleep(AFTER_PLUS_BEFORE_NEXT_MS);
