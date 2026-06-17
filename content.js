@@ -607,20 +607,16 @@
 
       clickIKnowButtons();
       attempt += 1;
-      const useOriginalRefreshFirstFlow = attempt === 1;
+      const refreshResult = clickRefreshOnce();
+      if (!refreshResult.ok) {
+        return { ok: false, step: 'refresh', error: refreshResult.error };
+      }
 
-      if (useOriginalRefreshFirstFlow) {
-        const refreshResult = clickRefreshOnce();
-        if (!refreshResult.ok) {
-          return { ok: false, step: 'refresh', error: refreshResult.error };
-        }
-
-        if (refreshToAreaDelayMs > 0) {
-          pushLog(`流程等待：重新整理時秒數 ${refreshToAreaDelayMs}ms`);
-          await sleep(refreshToAreaDelayMs);
-          if (isCancelled()) {
-            return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
-          }
+      if (refreshToAreaDelayMs > 0) {
+        pushLog(`流程等待：重新整理時秒數 ${refreshToAreaDelayMs}ms`);
+        await sleep(refreshToAreaDelayMs);
+        if (isCancelled()) {
+          return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
         }
       }
 
@@ -639,27 +635,8 @@
         return { ok: false, step: 'panel', error: panelResult.error };
       }
 
-      if (!useOriginalRefreshFirstFlow) {
-        if (refreshToAreaDelayMs > 0) {
-          pushLog(`流程等待：選區後等待重新整理 ${refreshToAreaDelayMs}ms`);
-          await sleep(refreshToAreaDelayMs);
-          if (isCancelled()) {
-            return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
-          }
-        }
-
-        const refreshResult = clickRefreshOnce();
-        if (!refreshResult.ok) {
-          return { ok: false, step: 'refresh', error: refreshResult.error };
-        }
-      }
-
       if (areaToPlusDelayMs > 0) {
-        pushLog(
-          useOriginalRefreshFirstFlow
-            ? `流程等待：選區後延遲 ${areaToPlusDelayMs}ms`
-            : `流程等待：刷新票券後延遲 ${areaToPlusDelayMs}ms`
-        );
+        pushLog(`流程等待：選區後延遲 ${areaToPlusDelayMs}ms`);
         await sleep(areaToPlusDelayMs);
         if (isCancelled()) {
           return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
@@ -686,12 +663,7 @@
             return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
           }
         }
-        pushLog(
-          (useOriginalRefreshFirstFlow
-            ? '一鍵流程完成：更新票數 -> 選票區 -> 點 +'
-            : '一鍵流程完成：選票區 -> 等待 -> 更新票數 -> 點 +') +
-            (runtimeOptions.includeNextStep ? ' -> 下一步' : '')
-        );
+        pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +' + (runtimeOptions.includeNextStep ? ' -> 下一步' : ''));
         return {
           ok: true,
           matched: panelResult.matched,
