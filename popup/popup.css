@@ -77,6 +77,9 @@ button:disabled {
 
 .area-actions {
   margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .area-list {
@@ -143,6 +146,20 @@ button:disabled {
 
 .secondary {
   background: #475569;
+}
+
+.log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0;
 }
 
 .log-title {

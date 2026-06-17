@@ -19,6 +19,8 @@
         <div class="log-title">Manual</div>
         <div class="area-actions">
           <button id="reloadAreasBtn" class="manual">讀取票區清單</button>
+          <button id="selectAllAreasBtn" class="manual secondary">全選</button>
+          <button id="clearAllAreasBtn" class="manual secondary">取消全選</button>
         </div>
         <div id="areaList" class="area-list">尚未讀取票區</div>
         <section class="flow-settings">
@@ -71,6 +73,28 @@
       </section>
       <section class="log-wrap">
         <div class="log-title">Log</div>
+        <div class="log-filters">
+          <label class="keyword-label inline-check">
+            <input id="logFilterSuccess" type="checkbox" checked />
+            成功
+          </label>
+          <label class="keyword-label inline-check">
+            <input id="logFilterTicket" type="checkbox" checked />
+            票況
+          </label>
+          <label class="keyword-label inline-check">
+            <input id="logFilterError" type="checkbox" checked />
+            失敗
+          </label>
+          <label class="keyword-label inline-check">
+            <input id="logFilterScan" type="checkbox" />
+            掃描細節
+          </label>
+          <label class="keyword-label inline-check">
+            <input id="logFilterSystem" type="checkbox" checked />
+            系統
+          </label>
+        </div>
         <label class="keyword-label">
           <input id="autoScrollLog" type="checkbox" checked />
           自動捲動 Log

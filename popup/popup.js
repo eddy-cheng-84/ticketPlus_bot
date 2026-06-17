@@ -3,6 +3,8 @@ const scheduleStatusEl = document.getElementById('scheduleStatus');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const reloadAreasBtn = document.getElementById('reloadAreasBtn');
+const selectAllAreasBtn = document.getElementById('selectAllAreasBtn');
+const clearAllAreasBtn = document.getElementById('clearAllAreasBtn');
 const saveScheduleBtn = document.getElementById('saveScheduleBtn');
 const stopScheduleBtn = document.getElementById('stopScheduleBtn');
 const ticketCountInput = document.getElementById('ticketCount');
@@ -18,6 +20,11 @@ const externalTriggerIntervalSecEl = document.getElementById('externalTriggerInt
 const saveExternalTriggerBtn = document.getElementById('saveExternalTriggerBtn');
 const testExternalTriggerBtn = document.getElementById('testExternalTriggerBtn');
 const externalTriggerStatusEl = document.getElementById('externalTriggerStatus');
+const logFilterSuccessEl = document.getElementById('logFilterSuccess');
+const logFilterTicketEl = document.getElementById('logFilterTicket');
+const logFilterErrorEl = document.getElementById('logFilterError');
+const logFilterScanEl = document.getElementById('logFilterScan');
+const logFilterSystemEl = document.getElementById('logFilterSystem');
 const autoScrollLogEl = document.getElementById('autoScrollLog');
 const areaListEl = document.getElementById('areaList');
 const logBox = document.getElementById('logBox');
@@ -42,6 +49,7 @@ let externalTriggerSettings = {
   method: 'GET',
   intervalSec: 1
 };
+let latestLogs = [];
 
 function isAllowedTicketplusUrl(url) {
   if (!url || typeof url !== 'string') {
@@ -311,14 +319,76 @@ function render(running, intervalMs, errorText = '') {
 
 function renderLogs(logs) {
   if (!Array.isArray(logs) || logs.length === 0) {
+    latestLogs = [];
     logBox.textContent = '尚無資料';
     return;
   }
 
-  logBox.textContent = logs.slice(-400).join('\n');
+  latestLogs = logs.slice(-400);
+  const filteredLogs = latestLogs.filter((line) => isLogCategoryEnabled(classifyLogLine(line)));
+  logBox.textContent = filteredLogs.length > 0 ? filteredLogs.join('\n') : '目前篩選條件下無資料';
   if (!autoScrollLogEl || autoScrollLogEl.checked) {
     logBox.scrollTop = logBox.scrollHeight;
   }
+}
+
+function classifyLogLine(line) {
+  const text = normalizeText(line);
+  if (
+    text.includes('流程等待') ||
+    text.includes('流程重試') ||
+    text.includes('更新票數') ||
+    text.includes('下一輪') ||
+    text.includes('略過票區')
+  ) {
+    return 'scan';
+  }
+  if (
+    text.includes('剩餘') ||
+    text.includes('有票') ||
+    text.includes('可選') ||
+    text.includes('票區')
+  ) {
+    return 'ticket';
+  }
+  if (
+    text.includes('失敗') ||
+    text.includes('錯誤') ||
+    text.includes('找不到') ||
+    text.includes('無法')
+  ) {
+    return 'error';
+  }
+  if (
+    text.includes('外部觸發') ||
+    text.includes('排程') ||
+    text.includes('已啟動') ||
+    text.includes('已停止') ||
+    text.includes('內容腳本已載入')
+  ) {
+    return 'system';
+  }
+  return 'success';
+}
+
+function isLogCategoryEnabled(category) {
+  if (category === 'scan') {
+    return Boolean(logFilterScanEl?.checked);
+  }
+  if (category === 'ticket') {
+    return Boolean(logFilterTicketEl?.checked);
+  }
+  if (category === 'error') {
+    return Boolean(logFilterErrorEl?.checked);
+  }
+  if (category === 'system') {
+    return Boolean(logFilterSystemEl?.checked);
+  }
+  return Boolean(logFilterSuccessEl?.checked);
+}
+
+function rerenderLogs() {
+  renderLogs(latestLogs);
 }
 
 async function loadAreaPreferences() {
@@ -348,6 +418,17 @@ async function loadAreaPreferences() {
 
 async function saveAreaPreferences() {
   await chrome.storage.local.set({ [STORAGE_KEY]: areaPreferences });
+}
+
+async function setAllAreaSelections(selected) {
+  if (!Array.isArray(areaPreferences) || areaPreferences.length === 0) {
+    return;
+  }
+  areaPreferences = areaPreferences.map((item) => ({ ...item, selected }));
+  await saveAreaPreferences();
+  await syncAutoTargets();
+  renderAreaList();
+  await refreshData();
 }
 
 async function loadScheduleSettings() {
@@ -590,6 +671,14 @@ reloadAreasBtn.addEventListener('click', async () => {
   await refreshAreas();
 });
 
+selectAllAreasBtn.addEventListener('click', async () => {
+  await setAllAreaSelections(true);
+});
+
+clearAllAreasBtn.addEventListener('click', async () => {
+  await setAllAreaSelections(false);
+});
+
 saveScheduleBtn.addEventListener('click', async () => {
   const ok = await saveScheduleSettings();
   if (!ok) {
@@ -684,6 +773,16 @@ testExternalTriggerBtn.addEventListener('click', async () => {
   }
   renderExternalTriggerStatus('測試完成：目前沒有收到外部觸發');
 });
+
+for (const checkbox of [
+  logFilterSuccessEl,
+  logFilterTicketEl,
+  logFilterErrorEl,
+  logFilterScanEl,
+  logFilterSystemEl
+]) {
+  checkbox?.addEventListener('change', rerenderLogs);
+}
 
 async function init() {
   await loadAreaPreferences();
