@@ -261,6 +261,10 @@
     return Number.isFinite(entry?.remaining) && entry.remaining <= 0;
   }
 
+  function hasPositiveRemaining(entry) {
+    return Number.isFinite(entry?.remaining) && entry.remaining > 0;
+  }
+
   function chooseEntryByOrder(entries, orderMode) {
     if (!Array.isArray(entries) || entries.length === 0) {
       return null;
@@ -443,22 +447,27 @@
     if (normalizedTargetKeys.length > 0) {
       for (const targetKey of normalizedTargetKeys) {
         const targetMatches = entries.filter((entry) => entry.key === targetKey);
-        const availableMatches = targetMatches.filter((entry) => !isSoldOutEntry(entry));
+        const availableMatches = targetMatches.filter((entry) => hasPositiveRemaining(entry));
         if (availableMatches.length > 0) {
           candidates = availableMatches;
           break;
         }
         if (targetMatches.length > 0) {
-          pushLog(`略過票區（剩餘 0）：「${targetKey}」`);
+          const hasKnownZero = targetMatches.some((entry) => isSoldOutEntry(entry));
+          pushLog(
+            hasKnownZero
+              ? `略過票區（剩餘 0）：「${targetKey}」`
+              : `略過票區（剩餘未知）：「${targetKey}」`
+          );
         }
       }
       if (candidates.length === 0) {
-        return { ok: false, error: 'DESIRED_TARGETS_SOLD_OUT' };
+        return { ok: false, error: 'DESIRED_TARGETS_UNAVAILABLE' };
       }
     } else {
-      candidates = entries.filter((entry) => !isSoldOutEntry(entry));
+      candidates = entries.filter((entry) => hasPositiveRemaining(entry));
       if (candidates.length === 0) {
-        return { ok: false, error: 'ALL_VISIBLE_TARGETS_SOLD_OUT' };
+        return { ok: false, error: 'ALL_VISIBLE_TARGETS_UNAVAILABLE' };
       }
     }
 
@@ -543,8 +552,11 @@
         options.orderMode || 'top_to_bottom'
       );
       if (!panelResult.ok) {
-        if (panelResult.error === 'DESIRED_TARGETS_SOLD_OUT' || panelResult.error === 'ALL_VISIBLE_TARGETS_SOLD_OUT') {
-          pushLog('目前可見票區剩餘皆為 0，將重新整理後重試');
+        if (
+          panelResult.error === 'DESIRED_TARGETS_UNAVAILABLE' ||
+          panelResult.error === 'ALL_VISIBLE_TARGETS_UNAVAILABLE'
+        ) {
+          pushLog('目前可見票區沒有明確剩餘票數可選，將重新整理後重試');
           continue;
         }
         return { ok: false, step: 'panel', error: panelResult.error };
