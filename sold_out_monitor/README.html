@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sold Out Monitor README</title>
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --paper: #fffaf0;
+      --ink: #251f17;
+      --muted: #756a5b;
+      --line: #decfb8;
+      --accent: #b8502a;
+      --accent-2: #176b62;
+      --code-bg: #1f241f;
+      --code-ink: #f4f1df;
+      --warn-bg: #fff0d8;
+      --ok-bg: #e7f2ea;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(184, 80, 42, 0.16), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(23, 107, 98, 0.14), transparent 30rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Noto Serif TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+      line-height: 1.72;
+    }
+
+    main {
+      width: min(1080px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0 72px;
+    }
+
+    header {
+      padding: 36px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: rgba(255, 250, 240, 0.88);
+      box-shadow: 0 20px 60px rgba(54, 42, 24, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2.2rem, 5vw, 4.3rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      font-size: 1.55rem;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 1.05rem;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    code {
+      padding: 0.12rem 0.35rem;
+      border-radius: 0.4rem;
+      background: rgba(31, 36, 31, 0.08);
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 16px;
+      background: var(--code-bg);
+      color: var(--code-ink);
+      line-height: 1.55;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+    }
+
+    .lead {
+      max-width: 780px;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .chip {
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff6e3;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    section {
+      margin-top: 22px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(255, 250, 240, 0.82);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .callout {
+      padding: 16px 18px;
+      border-left: 5px solid var(--accent);
+      border-radius: 16px;
+      background: var(--warn-bg);
+    }
+
+    .ok {
+      border-left-color: var(--accent-2);
+      background: var(--ok-bg);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 16px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #efe1c8;
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    ol,
+    ul {
+      margin: 0;
+      padding-left: 1.35rem;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .flow {
+      counter-reset: step;
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow div {
+      position: relative;
+      padding: 14px 14px 14px 52px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff7e8;
+    }
+
+    .flow div::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      display: grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    footer {
+      margin-top: 22px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100% - 18px, 1080px);
+        padding-top: 18px;
+      }
+
+      header,
+      section {
+        padding: 22px;
+        border-radius: 20px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      th {
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Sold Out Monitor</h1>
+      <p class="lead">
+        這是一個給 Ticket Plus 活動頁使用的「售完狀態監控器」。它會開啟 Chrome 等前端渲染完成，
+        掃描活動頁 <code>立即購買</code> 區塊底下的所有場次；只要某個場次不再顯示
+        <code>銷售一空</code>，就發送 webhook，並可同步通知 Chrome extension 開始執行。
+      </p>
+      <div class="chips">
+        <span class="chip">主要入口：Python / exe</span>
+        <span class="chip">保留舊版：legacy_node</span>
+        <span class="chip">活動切換：改 ticketplus_url</span>
+        <span class="chip">需要前端渲染：Playwright + Chrome</span>
+      </div>
+    </header>
+
+    <section>
+      <h2>這份資料夾在專案裡的位置</h2>
+      <p>
+        目前放在 Chrome extension 專案底下：
+        <code>C:\Users\Lu_white\Documents\chrome_extension\ticket_plus_bot\sold_out_monitor</code>
+      </p>
+      <div class="grid">
+        <div class="card">
+          <h3>給使用者看的重點</h3>
+          <p>正常使用時只需要改 <code>monitor_config.json</code>，然後跑 <code>start-monitor.bat</code>。</p>
+        </div>
+        <div class="card">
+          <h3>給下一個 Codex 的重點</h3>
+          <p>不要用 raw HTML 判斷 Ticket Plus 場次。這個網站的關鍵字是前端渲染後才出現在 DOM 裡。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>檔案導覽</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>檔案</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>monitor.py</code></td>
+            <td>主要 Python 原始碼。負責開 Chrome、讀取活動頁、解析場次、發 webhook、觸發 extension。</td>
+          </tr>
+          <tr>
+            <td><code>dist\sold_out_monitor.exe</code></td>
+            <td>已打包好的 Windows 執行檔。不想安裝 Python 時可以直接用它。</td>
+          </tr>
+          <tr>
+            <td><code>monitor_config.example.json</code></td>
+            <td>設定範例。第一次跑 <code>start-monitor.bat</code> 時，若沒有 <code>monitor_config.json</code> 會自動複製一份。</td>
+          </tr>
+          <tr>
+            <td><code>start-monitor.bat</code></td>
+            <td>最直覺的啟動入口。優先跑 exe，沒有 exe 才 fallback 到 Python。</td>
+          </tr>
+          <tr>
+            <td><code>test-notify.bat</code></td>
+            <td>測試 webhook / extension trigger 是否能送出。</td>
+          </tr>
+          <tr>
+            <td><code>build-exe.bat</code></td>
+            <td>重新打包 exe 用。會安裝 requirements 並呼叫 PyInstaller。</td>
+          </tr>
+          <tr>
+            <td><code>requirements.txt</code></td>
+            <td>Python 依賴，目前包含 <code>playwright</code> 與 <code>pyinstaller</code>。</td>
+          </tr>
+          <tr>
+            <td><code>legacy_node\</code></td>
+            <td>原本 Node.js 監控器的備份。沒有複製 <code>node_modules</code>、logs、runtime state。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>最短使用流程</h2>
+      <div class="flow">
+        <div>進入 <code>sold_out_monitor</code> 資料夾。</div>
+        <div>第一次使用時，執行 <code>start-monitor.bat</code>，它會建立 <code>monitor_config.json</code>。</div>
+        <div>打開 <code>monitor_config.json</code>，把 <code>ticketplus_url</code> 換成要監控的 Ticket Plus 活動頁。</div>
+        <div>確認 <code>webhook_url</code>、<code>extension_trigger_url</code> 是否正確。</div>
+        <div>再次執行 <code>start-monitor.bat</code>，開始輪詢監控。</div>
+      </div>
+      <pre><code>cd C:\Users\Lu_white\Documents\chrome_extension\ticket_plus_bot\sold_out_monitor
+start-monitor.bat</code></pre>
+    </section>
+
+    <section>
+      <h2>監控流程</h2>
+      <p>這份監控器的核心邏輯是「等前端渲染，再讀畫面文字」，流程如下：</p>
+      <div class="flow">
+        <div>用 Playwright 啟動 Chrome，開啟 <code>ticketplus_url</code>。</div>
+        <div>等待頁面前端渲染，直到 DOM 裡出現 <code>立即購買</code>。</div>
+        <div>讀取 <code>document.body.innerText</code>，不是抓 raw HTML。</div>
+        <div>找到真正的 <code>立即購買</code> 場次區塊。</div>
+        <div>解析所有場次名稱、日期、時間、地點、售票狀態。</div>
+        <div>如果某場次不含 <code>銷售一空</code>，視為有票或可進入訊號。</div>
+        <div>發送 webhook，並依設定 POST/GET 到 extension trigger server。</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>立即購買如何避免誤判</h2>
+      <div class="callout ok">
+        <p>
+          Ticket Plus 頁面上方導覽列也會有一個 <code>立即購買</code>。監控器不會看到第一個就相信它，
+          而是只接受後面很近的位置出現場次欄位的 <code>立即購買</code>。
+        </p>
+      </div>
+      <p>目前判斷條件：</p>
+      <ul>
+        <li>逐行掃描所有文字。</li>
+        <li>找到文字等於 <code>立即購買</code> 的行。</li>
+        <li>檢查它後面 12 行內是否有 <code>場次名稱</code> 和 <code>售票狀態</code>。</li>
+        <li>或檢查是否有 <code>日期</code> / <code>時間</code> 這種舊格式欄位。</li>
+        <li>如果後面只是 <code>活動介紹</code>、<code>注意事項</code>、<code>購買提醒</code>，就視為導覽列並跳過。</li>
+      </ul>
+      <pre><code>導覽列立即購買：立即購買 -> 活動介紹 -> 注意事項 -> 購買提醒
+結果：跳過
+
+真正場次區塊：立即購買 -> 場次名稱 -> 場次日期 -> 場次時間 -> 場次地點 -> 售票狀態
+結果：開始解析場次</code></pre>
+    </section>
+
+    <section>
+      <h2>有票訊號如何判斷</h2>
+      <p>
+        目前規則很直接：場次 evidence 裡包含 <code>銷售一空</code> 就視為售完；不包含
+        <code>銷售一空</code> 就視為可通知。
+      </p>
+      <div class="callout">
+        <p>
+          注意：<code>尚未開賣</code>、<code>立即購買</code>、<code>熱賣中</code> 都會被歸類為「不是銷售一空」。
+          這是刻意做成廣義訊號。如果未來只想通知 <code>立即購買</code> 或 <code>熱賣中</code>，要改成白名單判斷。
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>設定說明</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>設定</th>
+            <th>說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ticketplus_url</code></td>
+            <td>要監控的 Ticket Plus 活動頁。換活動通常只改這個。</td>
+          </tr>
+          <tr>
+            <td><code>webhook_url</code></td>
+            <td>通知目的地，目前預設是 ntfy topic。</td>
+          </tr>
+          <tr>
+            <td><code>webhook_format</code></td>
+            <td><code>ntfy</code> 或 <code>json</code>。ntfy 會用文字訊息，json 會送完整 payload。</td>
+          </tr>
+          <tr>
+            <td><code>extension_trigger_enabled</code></td>
+            <td>是否同步通知 Chrome extension 的 local trigger server。</td>
+          </tr>
+          <tr>
+            <td><code>extension_trigger_url</code></td>
+            <td>預設 <code>http://127.0.0.1:16888/trigger</code>，要搭配 extension 那邊的 <code>trigger_server.py</code>。</td>
+          </tr>
+          <tr>
+            <td><code>extension_trigger_method</code></td>
+            <td><code>POST</code> 或 <code>GET</code>。POST 會送 JSON payload；GET 會自動加 <code>?fire=1</code>。</td>
+          </tr>
+          <tr>
+            <td><code>headless</code></td>
+            <td><code>false</code> 會看得到 Chrome 視窗；<code>true</code> 會背景執行。</td>
+          </tr>
+          <tr>
+            <td><code>browser_channel</code></td>
+            <td>預設 <code>chrome</code>，代表使用本機已安裝的 Chrome。</td>
+          </tr>
+          <tr>
+            <td><code>poll_min_ms</code> / <code>poll_max_ms</code></td>
+            <td>每輪監控間隔會在這兩個毫秒數之間隨機。</td>
+          </tr>
+          <tr>
+            <td><code>alert_repeat_count</code></td>
+            <td>偵測到可通知場次時 webhook 重複發送次數。</td>
+          </tr>
+          <tr>
+            <td><code>alert_repeat_interval_ms</code></td>
+            <td>重複通知之間的間隔。</td>
+          </tr>
+          <tr>
+            <td><code>sold_out_text</code></td>
+            <td>判斷售完用的文字，預設 <code>銷售一空</code>。</td>
+          </tr>
+        </tbody>
+      </table>
+      <pre><code>{
+  "ticketplus_url": "https://ticketplus.com.tw/activity/...",
+  "webhook_url": "https://ntfy.sh/your-topic",
+  "extension_trigger_enabled": true,
+  "extension_trigger_url": "http://127.0.0.1:16888/trigger",
+  "extension_trigger_method": "POST",
+  "headless": false
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>常用命令</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>跑一次檢查</h3>
+          <pre><code>dist\sold_out_monitor.exe --config monitor_config.json --once</code></pre>
+        </div>
+        <div class="card">
+          <h3>測試通知</h3>
+          <pre><code>dist\sold_out_monitor.exe --config monitor_config.json --test-notify</code></pre>
+        </div>
+        <div class="card">
+          <h3>一般啟動</h3>
+          <pre><code>start-monitor.bat</code></pre>
+        </div>
+        <div class="card">
+          <h3>重新打包 exe</h3>
+          <pre><code>build-exe.bat</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>和 Chrome Extension 的關係</h2>
+      <p>
+        這個 monitor 本身只負責「看到不是銷售一空」並發出訊號。真正開始搶票的動作仍在
+        Chrome extension 那邊。兩邊用 local trigger server 串接。
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>角色</th>
+            <th>責任</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>sold_out_monitor</td>
+            <td>監控活動頁所有場次，發 webhook，通知 <code>127.0.0.1:16888/trigger</code>。</td>
+          </tr>
+          <tr>
+            <td>trigger_server.py</td>
+            <td>接收外部 POST/GET 訊號，供 extension 的「外部觸發」測試或啟動流程讀取。</td>
+          </tr>
+          <tr>
+            <td>Chrome extension</td>
+            <td>收到 trigger 後，在 Ticket Plus 頁面執行原本的自動流程。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>排錯筆記</h2>
+      <ul>
+        <li>如果完全抓不到場次，先確認是不是用 raw HTML 在看；正確方式一定要前端渲染後讀 DOM。</li>
+        <li>如果 exe 開不起 Chrome，確認本機有安裝 Chrome，或調整 <code>browser_channel</code>。</li>
+        <li>如果 extension 沒反應，先確認 <code>trigger_server.py</code> 有跑，且網址是 <code>http://127.0.0.1:16888/trigger</code>。</li>
+        <li>如果不想真的通知，把 <code>webhook_url</code> 清空、<code>extension_trigger_enabled</code> 設成 <code>false</code>，再用 <code>--once</code> 看輸出。</li>
+        <li>runtime 產生的 <code>.ticketplus-monitor-state.json</code> 是狀態檔，不應該 commit。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>給下一個 Codex 的接手提醒</h2>
+      <div class="callout ok">
+        <p>
+          修改這個專案時，請先從真實活動頁跑一次 <code>--once</code> 驗證。不要只看單元測試或 raw HTML，
+          因為 Ticket Plus 的可售狀態是 client-rendered。上次驗證用的活動頁是 Vaundy，exe 能抓到
+          2026-10-31 與 2026-11-01 兩個場次，狀態皆為 <code>銷售一空</code>。
+        </p>
+      </div>
+      <p>
+        如果要改「有票」判斷，優先改 <code>monitor.py</code> 裡的狀態規則，並同步更新這份 README。
+        如果要改部署方式，確認 <code>start-monitor.bat</code>、<code>build-exe.bat</code>、<code>README.md</code>
+        和這份 HTML 都一致。
+      </p>
+    </section>
+
+    <footer>
+      Last updated for the Ticket Plus bot project. Keep this file practical, boring where needed, and honest about the sharp edges.
+    </footer>
+  </main>
+</body>
+</html>
