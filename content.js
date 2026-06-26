@@ -6,6 +6,7 @@
   const AFTER_PLUS_BEFORE_NEXT_MS = 100;
   const QUEUE_WAIT_POLL_MS = 1000;
   const PANEL_OBSERVE_INTERVAL_MS = 150;
+  const PANEL_SCAN_SCROLL_DELAY_MS = 120;
   const MAX_CONSECUTIVE_REFRESH_NOT_FOUND = 10;
   const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
   const BOT_RUNTIME_KEY = 'bot_runtime_state_v1';
@@ -160,7 +161,6 @@
   function buildAreaKey(rawText) {
     let key = normalizeText(rawText);
     key = key.replace(/剩餘\s*\d+/g, '');
-    key = key.replace(/NT\.?\s*[\d,]+/g, '');
     key = key.replace(/熱賣中|已售完|完售|開賣時間|即將開賣|登記抽選/g, '');
     return normalizeText(key);
   }
@@ -302,6 +302,92 @@
       });
     }
     return areas;
+  }
+
+  function summarizeAreaLabels(areas) {
+    if (!Array.isArray(areas) || areas.length === 0) {
+      return '無';
+    }
+    return areas.map((area) => area.label || area.key).join(' | ');
+  }
+
+  async function collectAllPanelAreas() {
+    const initialEntries = getPanelEntries();
+    const merged = new Map();
+
+    const appendAreas = (areas) => {
+      for (const area of areas) {
+        if (!area?.key) {
+          continue;
+        }
+
+        if (!merged.has(area.key)) {
+          merged.set(area.key, area);
+          continue;
+        }
+
+        const existing = merged.get(area.key);
+        if (!Number.isFinite(existing?.remaining) && Number.isFinite(area.remaining)) {
+          merged.set(area.key, area);
+        }
+      }
+    };
+
+    appendAreas(
+      initialEntries.map((entry) => ({
+        key: entry.key,
+        label: entry.label,
+        remaining: entry.remaining
+      }))
+    );
+    pushLog(`票區掃描：初始可見 header ${initialEntries.length} 個，初始區域 ${merged.size} 個`);
+    pushLog(`票區掃描：初始區域列表 -> ${summarizeAreaLabels(Array.from(merged.values()))}`);
+
+    const originalScrollTop = window.scrollY || window.pageYOffset || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const documentHeight = Math.max(
+      document.body?.scrollHeight || 0,
+      document.documentElement?.scrollHeight || 0
+    );
+    const maxScrollTop = Math.max(0, documentHeight - viewportHeight);
+    const step = Math.max(240, Math.floor(viewportHeight * 0.8));
+    pushLog(
+      `票區掃描：改用整頁 scroll，viewportHeight=${viewportHeight} documentHeight=${documentHeight} step=${step}`
+    );
+
+    window.scrollTo(0, 0);
+    await sleep(PANEL_SCAN_SCROLL_DELAY_MS);
+    {
+      const visibleAreas = collectPanelAreas();
+      const beforeCount = merged.size;
+      appendAreas(visibleAreas);
+      pushLog(
+        `票區掃描：頂部視窗新增 ${merged.size - beforeCount} 個，累計 ${merged.size} 個 -> ${summarizeAreaLabels(visibleAreas)}`
+      );
+    }
+
+    let currentScrollTop = 0;
+    let scrollStepIndex = 0;
+    while (currentScrollTop < maxScrollTop) {
+      currentScrollTop = Math.min(maxScrollTop, currentScrollTop + step);
+      window.scrollTo(0, currentScrollTop);
+      await sleep(PANEL_SCAN_SCROLL_DELAY_MS);
+      scrollStepIndex += 1;
+      const visibleAreas = collectPanelAreas();
+      const beforeCount = merged.size;
+      appendAreas(visibleAreas);
+      pushLog(
+        `票區掃描：第 ${scrollStepIndex} 次整頁捲動 scrollTop=${currentScrollTop}，新增 ${merged.size - beforeCount} 個，累計 ${merged.size} 個 -> ${summarizeAreaLabels(visibleAreas)}`
+      );
+    }
+
+    window.scrollTo(0, originalScrollTop);
+    await sleep(PANEL_SCAN_SCROLL_DELAY_MS);
+    pushLog(
+      `票區掃描完成：總共收集 ${merged.size} 個區域 -> ${summarizeAreaLabels(Array.from(merged.values()))}`
+    );
+
+    return Array.from(merged.values());
   }
 
   function buildEntriesSnapshot(entries) {
@@ -902,9 +988,10 @@
     }
 
     if (message.type === 'GET_PANEL_AREAS') {
-      const areas = collectPanelAreas();
-      sendResponse({ ok: true, areas });
-      return;
+      collectAllPanelAreas().then((areas) => {
+        sendResponse({ ok: true, areas });
+      });
+      return true;
     }
 
     if (message.type === 'SET_AUTO_TARGETS') {
