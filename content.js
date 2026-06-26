@@ -265,8 +265,16 @@
     return Number.isFinite(entry?.remaining) && entry.remaining <= 0;
   }
 
+  function isHotSellingEntry(entry) {
+    return normalizeText(entry?.label || '').includes('熱賣中');
+  }
+
   function hasPositiveRemaining(entry) {
     return Number.isFinite(entry?.remaining) && entry.remaining > 0;
+  }
+
+  function isSelectableEntry(entry) {
+    return hasPositiveRemaining(entry) || isHotSellingEntry(entry);
   }
 
   function chooseEntryByOrder(entries, orderMode) {
@@ -647,7 +655,7 @@
     if (normalizedTargetKeys.length > 0) {
       for (const targetKey of normalizedTargetKeys) {
         const targetMatches = entries.filter((entry) => entry.key === targetKey);
-        const availableMatches = targetMatches.filter((entry) => hasPositiveRemaining(entry));
+        const availableMatches = targetMatches.filter((entry) => isSelectableEntry(entry));
         if (availableMatches.length > 0) {
           candidates = availableMatches;
           break;
@@ -665,7 +673,7 @@
         return { ok: false, error: 'DESIRED_TARGETS_UNAVAILABLE' };
       }
     } else {
-      candidates = entries.filter((entry) => hasPositiveRemaining(entry));
+      candidates = entries.filter((entry) => isSelectableEntry(entry));
       if (candidates.length === 0) {
         return { ok: false, error: 'ALL_VISIBLE_TARGETS_UNAVAILABLE' };
       }
