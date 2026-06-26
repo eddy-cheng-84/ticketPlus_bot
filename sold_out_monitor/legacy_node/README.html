@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TicketPlus Monitor README</title>
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --panel: #fffaf2;
+      --ink: #1f1a17;
+      --muted: #6f635a;
+      --accent: #b84c2a;
+      --accent-soft: #f3d8c8;
+      --border: #e2d4c3;
+      --code: #2a211c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
+      background:
+        radial-gradient(circle at top right, #ffe7c9 0, transparent 28%),
+        linear-gradient(180deg, #f9f4ec 0%, var(--bg) 100%);
+      color: var(--ink);
+      line-height: 1.7;
+    }
+
+    .wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #fff6ea, #fffdf9);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(80, 48, 18, 0.08);
+    }
+
+    h1, h2 {
+      line-height: 1.2;
+      margin: 0 0 14px;
+    }
+
+    h1 {
+      font-size: 2rem;
+    }
+
+    h2 {
+      margin-top: 34px;
+      font-size: 1.35rem;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .card {
+      margin-top: 24px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+    }
+
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    pre {
+      margin: 14px 0 0;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--code);
+      color: #f7efe5;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin: 10px 0 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .mini {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .mini strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+    }
+
+    .note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: #fff4df;
+      border-left: 4px solid var(--accent);
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="tag">TicketPlus 監控說明</div>
+      <h1>TicketPlus 有票通知器</h1>
+      <p>這份工具會定期檢查 TicketPlus 頁面上的指定場次，只要某一天從「銷售一空」變成有票，就會送出 ntfy 通知。</p>
+      <p>目前通知格式長這樣：</p>
+      <pre>2026-06-20 有票 [2026-06-16T12:34:56.789Z]</pre>
+    </section>
+
+    <section class="card">
+      <h2>1. 最快開始方式</h2>
+      <p>第一次使用請先安裝依賴：</p>
+      <pre>cd C:\Users\Lu_white\Documents\Codex\2026-06-16\hi\work\ticketplus-monitor
+npm.cmd install</pre>
+
+      <p>之後直接執行監控：</p>
+      <pre>start-monitor.bat</pre>
+
+      <p>如果只想先測試通知：</p>
+      <pre>test-notify.bat</pre>
+    </section>
+
+    <section class="card">
+      <h2>2. 它現在會做什麼</h2>
+      <ul>
+        <li>打開 TicketPlus 活動頁面。</li>
+        <li>固定檢查你指定的場次文字。</li>
+        <li>如果某一天不再顯示「銷售一空」，就發 ntfy。</li>
+        <li>同一個狀態不會每一輪都重複通知。</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>3. 最常改的設定</h2>
+      <div class="grid">
+        <div class="mini">
+          <strong>WEBHOOK_URL</strong>
+          ntfy 的 topic 網址。
+        </div>
+        <div class="mini">
+          <strong>POLL_MS</strong>
+          輪詢間隔，單位毫秒。<br>60000 = 60 秒。
+        </div>
+        <div class="mini">
+          <strong>POLL_MIN_MS / POLL_MAX_MS</strong>
+          隨機輪詢區間。<br>例如 45000 到 90000。
+        </div>
+        <div class="mini">
+          <strong>HEADLESS</strong>
+          true = 背景執行不顯示瀏覽器。<br>false = 看得到瀏覽器。
+        </div>
+        <div class="mini">
+          <strong>FAST_MODE</strong>
+          true = 同一頁一直 reload。<br>false = 每輪重開一頁。
+        </div>
+        <div class="mini">
+          <strong>ALERT_REPEAT_COUNT / ALERT_REPEAT_INTERVAL_MS</strong>
+          有票時重送通知次數與間隔。<br>預設 3 次，每次 60 秒。
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4. 如果要改成其他網站</h2>
+      <p>最少要改這幾個地方：</p>
+      <ul>
+        <li><code>TICKETPLUS_URL</code>：改成新網址。</li>
+        <li><code>TARGETS</code>：改成你要監控的場次或目標文字。</li>
+        <li>判斷「售完 / 有票」的文字規則。</li>
+        <li>等待頁面載入完成的條件。</li>
+      </ul>
+
+      <div class="note">
+        如果只是同一個 TicketPlus 站內的別場活動，通常先改網址和目標場次就夠了。<br>
+        如果是完全不同網站，解析規則通常也要一起改。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>5. 隨機輪詢怎麼設</h2>
+      <p>如果你不想固定每 60 秒檢查一次，可以改成區間隨機。</p>
+      <pre>set POLL_MIN_MS=45000
+set POLL_MAX_MS=90000</pre>
+      <p>這樣每一輪都會在 45 到 90 秒之間隨機挑一個等待時間。</p>
+      <p>如果你想回到固定間隔，就只用：</p>
+      <pre>set POLL_MS=60000</pre>
+    </section>
+
+    <section class="card">
+      <h2>6. 為什麼現在用 Fast Mode</h2>
+      <p>目前預設是 <code>FAST_MODE=true</code>，也就是固定同一頁一直 <code>reload()</code>。</p>
+      <ul>
+        <li>比較省資源。</li>
+        <li>輪詢速度比較快。</li>
+        <li>比較適合這種長時間掛著跑的監控。</li>
+      </ul>
+
+      <p>如果哪天你發現網站容易卡住、判斷怪怪的，可以改成：</p>
+      <pre>set FAST_MODE=false</pre>
+      <p>這樣每次都會重開新頁，穩定性通常比較高。</p>
+    </section>
+
+    <section class="card">
+      <h2>7. 目前相關檔案</h2>
+      <ul>
+        <li><code>monitor.js</code>：主程式。</li>
+        <li><code>start-monitor.bat</code>：直接開始監控。</li>
+        <li><code>test-notify.bat</code>：發測試通知。</li>
+        <li><code>README.md</code>：文字版說明。</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

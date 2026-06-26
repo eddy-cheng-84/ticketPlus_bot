@@ -1,0 +1,19 @@
+{
+  "ticketplus_url": "https://ticketplus.com.tw/activity/a56fce0af2da4d41e26b2dfa34b7babc",
+  "webhook_url": "https://ntfy.sh/wasimilunolisaconser",
+  "webhook_format": "ntfy",
+  "ntfy_title": "TicketPlus availability alert",
+  "ntfy_priority": "urgent",
+  "ntfy_tags": "warning,ticket",
+  "extension_trigger_enabled": true,
+  "extension_trigger_url": "http://127.0.0.1:16888/trigger",
+  "extension_trigger_method": "POST",
+  "headless": false,
+  "browser_channel": "chrome",
+  "poll_min_ms": 15000,
+  "poll_max_ms": 60000,
+  "alert_repeat_count": 3,
+  "alert_repeat_interval_ms": 60000,
+  "sold_out_text": "銷售一空",
+  "state_file": ".ticketplus-monitor-state.json"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "ticketplus-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monitor Ticket Plus event availability and notify a webhook when a session is no longer sold out.",
+  "scripts": {
+    "start": "node monitor.js",
+    "check": "node monitor.js --once"
+  },
+  "dependencies": {
+    "playwright": "^1.54.2"
+  }
+}
