@@ -39,11 +39,23 @@
           </select>
         </section>
         <section class="flow-settings">
-          <label for="scheduleStartTime" class="keyword-label">每日自動啟動時間</label>
-          <input id="scheduleStartTime" class="keyword-input" type="text" inputmode="numeric" placeholder="HH:MM:SS（24小時制）" pattern="[0-2][0-9]:[0-5][0-9]:[0-5][0-9]" value="11:00:01" />
-          <label for="scheduleStopTime" class="keyword-label">每日自動暫停時間</label>
-          <input id="scheduleStopTime" class="keyword-input" type="text" inputmode="numeric" placeholder="HH:MM:SS（24小時制）" pattern="[0-2][0-9]:[0-5][0-9]:[0-5][0-9]" value="11:01:00" />
-          <p class="time-hint">使用 24 小時制 HH:MM:SS，例如 12:00:00 代表中午 12 點。</p>
+          <label class="keyword-label">每日自動啟動時間</label>
+          <div class="schedule-time-row">
+            <input id="scheduleStartHour" class="keyword-input schedule-time-part" type="number" min="0" max="23" step="1" value="11" />
+            <span class="schedule-time-sep">:</span>
+            <input id="scheduleStartMinute" class="keyword-input schedule-time-part" type="number" min="0" max="59" step="1" value="00" />
+            <span class="schedule-time-sep">:</span>
+            <input id="scheduleStartSecond" class="keyword-input schedule-time-part" type="number" min="0" max="59" step="1" value="01" />
+          </div>
+          <label class="keyword-label">每日自動暫停時間</label>
+          <div class="schedule-time-row">
+            <input id="scheduleStopHour" class="keyword-input schedule-time-part" type="number" min="0" max="23" step="1" value="11" />
+            <span class="schedule-time-sep">:</span>
+            <input id="scheduleStopMinute" class="keyword-input schedule-time-part" type="number" min="0" max="59" step="1" value="01" />
+            <span class="schedule-time-sep">:</span>
+            <input id="scheduleStopSecond" class="keyword-input schedule-time-part" type="number" min="0" max="59" step="1" value="00" />
+          </div>
+          <p class="time-hint">使用 24 小時制，可直接輸入或按上下調整，例如 12:00:00 代表中午 12 點。</p>
           <button id="saveScheduleBtn" class="manual">儲存並排程</button>
           <button id="stopScheduleBtn" class="stop">停止排程</button>
         </section>

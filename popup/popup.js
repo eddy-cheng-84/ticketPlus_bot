@@ -11,8 +11,12 @@ const ticketCountInput = document.getElementById('ticketCount');
 const refreshToAreaDelaySecInput = document.getElementById('refreshToAreaDelaySec');
 const areaToPlusDelaySecInput = document.getElementById('areaToPlusDelaySec');
 const areaOrderModeEl = document.getElementById('areaOrderMode');
-const scheduleStartTimeEl = document.getElementById('scheduleStartTime');
-const scheduleStopTimeEl = document.getElementById('scheduleStopTime');
+const scheduleStartHourEl = document.getElementById('scheduleStartHour');
+const scheduleStartMinuteEl = document.getElementById('scheduleStartMinute');
+const scheduleStartSecondEl = document.getElementById('scheduleStartSecond');
+const scheduleStopHourEl = document.getElementById('scheduleStopHour');
+const scheduleStopMinuteEl = document.getElementById('scheduleStopMinute');
+const scheduleStopSecondEl = document.getElementById('scheduleStopSecond');
 const externalTriggerEnabledEl = document.getElementById('externalTriggerEnabled');
 const externalTriggerUrlEl = document.getElementById('externalTriggerUrl');
 const externalTriggerMethodEl = document.getElementById('externalTriggerMethod');
@@ -102,6 +106,37 @@ function normalizeHmsTime(value) {
     return '';
   }
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+}
+
+function clampTimePart(value, min, max) {
+  const parsed = Number.parseInt(String(value ?? '').trim(), 10);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function getScheduleTimeFromInputs(hourEl, minuteEl, secondEl) {
+  const hour = clampTimePart(hourEl?.value, 0, 23);
+  const minute = clampTimePart(minuteEl?.value, 0, 59);
+  const second = clampTimePart(secondEl?.value, 0, 59);
+  if (hour === null || minute === null || second === null) {
+    return '';
+  }
+  return normalizeHmsTime(
+    `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`
+  );
+}
+
+function setScheduleTimeInputs(hourEl, minuteEl, secondEl, hms) {
+  const normalized = normalizeHmsTime(hms);
+  if (!normalized) {
+    return;
+  }
+  const [hour, minute, second] = normalized.split(':');
+  hourEl.value = hour;
+  minuteEl.value = minute;
+  secondEl.value = second;
 }
 
 function hmsToSeconds(hms) {
@@ -444,23 +479,23 @@ async function loadScheduleSettings() {
 }
 
 async function saveScheduleSettings() {
-  const normalizedStart = normalizeHmsTime(scheduleStartTimeEl?.value || '');
-  const normalizedStop = normalizeHmsTime(scheduleStopTimeEl?.value || '');
+  const normalizedStart = getScheduleTimeFromInputs(scheduleStartHourEl, scheduleStartMinuteEl, scheduleStartSecondEl);
+  const normalizedStop = getScheduleTimeFromInputs(scheduleStopHourEl, scheduleStopMinuteEl, scheduleStopSecondEl);
   if (!normalizedStart || !normalizedStop) {
-    render(false, 10000, '定時格式錯誤，請用 11:00:01');
+    render(false, 10000, '定時格式錯誤，請用 24 小時制 11:00:01');
     return false;
   }
 
   scheduleSettings = { startTime: normalizedStart, stopTime: normalizedStop };
-  scheduleStartTimeEl.value = scheduleSettings.startTime;
-  scheduleStopTimeEl.value = scheduleSettings.stopTime;
+  setScheduleTimeInputs(scheduleStartHourEl, scheduleStartMinuteEl, scheduleStartSecondEl, scheduleSettings.startTime);
+  setScheduleTimeInputs(scheduleStopHourEl, scheduleStopMinuteEl, scheduleStopSecondEl, scheduleSettings.stopTime);
   await chrome.storage.local.set({ [SCHEDULE_KEY]: scheduleSettings });
   return true;
 }
 
 function hydrateScheduleSettingsUi() {
-  scheduleStartTimeEl.value = scheduleSettings.startTime || '11:00:01';
-  scheduleStopTimeEl.value = scheduleSettings.stopTime || '11:01:00';
+  setScheduleTimeInputs(scheduleStartHourEl, scheduleStartMinuteEl, scheduleStartSecondEl, scheduleSettings.startTime || '11:00:01');
+  setScheduleTimeInputs(scheduleStopHourEl, scheduleStopMinuteEl, scheduleStopSecondEl, scheduleSettings.stopTime || '11:01:00');
 }
 
 async function syncAutoTargets() {
