@@ -117,7 +117,7 @@ def load_config(config_path: Path) -> dict[str, Any]:
             get_setting(file_config, "EXTENSION_TRIGGER_METHOD", "extension_trigger_method", "POST")
         ).upper(),
         "headless": bool_value(get_setting(file_config, "HEADLESS", "headless", False), False),
-        "browser_channel": get_setting(file_config, "BROWSER_CHANNEL", "browser_channel", "chrome"),
+        "browser_channel": get_setting(file_config, "BROWSER_CHANNEL", "browser_channel", "msedge"),
         "timeout_ms": int_value(get_setting(file_config, "TIMEOUT_MS", "timeout_ms", 30000), 30000),
         "state_file": get_setting(file_config, "STATE_FILE", "state_file", ".ticketplus-monitor-state.json"),
         "sold_out_text": get_setting(file_config, "SOLD_OUT_TEXT", "sold_out_text", "銷售一空"),

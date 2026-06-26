@@ -1,0 +1,7 @@
+monitor_config.json
+.ticketplus-monitor-state.json
+sold_out_monitor.spec
+logs/
+build/
+__pycache__/
+*.pyc
