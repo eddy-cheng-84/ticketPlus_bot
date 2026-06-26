@@ -8,6 +8,7 @@
   const PANEL_OBSERVE_INTERVAL_MS = 150;
   const PANEL_SCAN_SCROLL_DELAY_MS = 120;
   const MAX_CONSECUTIVE_REFRESH_NOT_FOUND = 10;
+  const ACTIVITY_BUTTON_LABELS = ['立即購買', '尚未開賣'];
   const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
   const BOT_RUNTIME_KEY = 'bot_runtime_state_v1';
 
@@ -73,6 +74,70 @@
 
   function normalizeText(text) {
     return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function getPageMode() {
+    const pathname = window.location.pathname || '';
+    if (pathname.startsWith('/confirmSeat/')) {
+      return 'confirm_seat';
+    }
+    if (pathname.startsWith('/activity/')) {
+      return 'activity';
+    }
+    if (pathname.startsWith('/order/')) {
+      return 'order';
+    }
+    return 'other';
+  }
+
+  function findButtonByExactText(labels) {
+    const normalizedLabels = Array.isArray(labels)
+      ? labels.map((label) => normalizeText(label)).filter(Boolean)
+      : [normalizeText(labels)].filter(Boolean);
+
+    if (normalizedLabels.length === 0) {
+      return null;
+    }
+
+    const spans = document.querySelectorAll('span.v-btn__content');
+    for (const span of spans) {
+      const text = normalizeText(span.textContent || '');
+      if (!normalizedLabels.includes(text)) {
+        continue;
+      }
+
+      const button = span.closest('button, [role="button"], .v-btn');
+      if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') {
+        continue;
+      }
+      return {
+        button,
+        text
+      };
+    }
+
+    return null;
+  }
+
+  function clickActivityEntryButton() {
+    const matched = findButtonByExactText(ACTIVITY_BUTTON_LABELS);
+    if (!matched) {
+      pushLog('活動頁流程等待：未找到「立即購買」或「尚未開賣」按鈕');
+      return { ok: false, error: 'ACTIVITY_BUTTON_NOT_FOUND' };
+    }
+
+    matched.button.click();
+    pushLog(`活動頁流程點擊成功：「${matched.text}」`);
+    return { ok: true, clickedText: matched.text };
+  }
+
+  function stopBecauseConfirmSeatPage() {
+    if (!running) {
+      return;
+    }
+
+    pushLog('已進入結帳頁（confirmSeat），停止自動流程');
+    stop();
   }
 
   function sanitizeScheduleOptions(options) {
@@ -480,6 +545,21 @@
     while (running) {
       if (generation !== runGeneration) {
         return;
+      }
+      const pageMode = getPageMode();
+      if (pageMode === 'confirm_seat') {
+        stopBecauseConfirmSeatPage();
+        return;
+      }
+      if (pageMode === 'activity') {
+        clickActivityEntryButton();
+        await sleep(LOOP_RETRY_DELAY_MS);
+        continue;
+      }
+      if (pageMode !== 'order') {
+        pushLog(`流程等待：目前頁面 ${window.location.pathname} 尚未進入 activity/order/confirmSeat 目標流程`);
+        await sleep(LOOP_RETRY_DELAY_MS);
+        continue;
       }
       const flowResult = await runPurchaseFlow(startOptions, { includeNextStep: true });
       if (!running) {
