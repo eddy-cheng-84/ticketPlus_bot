@@ -43,14 +43,67 @@ exe 沒有把 Chrome 或 Edge 瀏覽器本體包進去。
 如果真的要最小化檔案大小，最小方案是不要帶 exe，改用 Python source + requirements.txt。
 
 
+建議使用方式：GUI
+-----------------
+
+現在最建議的入口是 GUI：
+
+  start-monitor-gui.bat
+
+GUI 可以直接填：
+
+  活動網址
+  Webhook URL
+  是否啟用 Extension Trigger
+  Trigger URL
+  Edge / Chrome
+  Headless
+  輪詢秒數
+  通知重複次數
+
+GUI 下方有 Log / Debug 欄位，可以直接看到：
+
+  掃描到哪幾個場次
+  每個場次目前是「銷售一空」或「可通知」
+  webhook 是否送出
+  extension trigger 是否送出
+  錯誤 stack trace
+
+GUI 按鈕：
+
+  儲存設定
+    把畫面上的欄位寫入 monitor_config.json。
+
+  掃描一次
+    開 Edge 掃目前活動頁一次，不進入長時間輪詢。
+
+  測試通知
+    發一筆測試 webhook。
+
+  開始監控
+    依照輪詢秒數持續掃描。
+
+  停止
+    停止目前監控 loop。
+
+  清除 Log
+    清空 GUI 內的 Log 欄位。
+
+
 檔案說明
 --------
+
+monitor_gui.py
+  GUI 主程式。讓使用者不用手改 JSON。
 
 monitor.py
   主要 Python 程式。
 
+dist\sold_out_monitor_gui.exe
+  已打包的 Windows GUI exe。
+
 dist\sold_out_monitor.exe
-  已打包的 Windows exe。
+  已打包的 Windows CLI exe。
 
 monitor_config.example.json
   設定範例。第一次跑 start-monitor.bat 時，若沒有 monitor_config.json，會自動複製一份。
@@ -62,13 +115,19 @@ requirements.txt
   Python 依賴。
 
 start-monitor.bat
-  一般啟動入口。優先跑 dist\sold_out_monitor.exe，沒有 exe 才跑 Python。
+  CLI 啟動入口。優先跑 dist\sold_out_monitor.exe，沒有 exe 才跑 Python。
+
+start-monitor-gui.bat
+  GUI 啟動入口。優先跑 dist\sold_out_monitor_gui.exe，沒有 exe 才跑 Python。
 
 test-notify.bat
   測試 webhook / extension trigger。
 
 build-exe.bat
-  用 PyInstaller 重新打包 exe。
+  用 PyInstaller 重新打包 CLI exe。
+
+build-gui-exe.bat
+  用 PyInstaller 重新打包 GUI exe。
 
 legacy_node\
   舊 Node.js 版監控器備份。
@@ -86,8 +145,32 @@ sold_out_monitor.spec
   PyInstaller spec artifact。一般不要 commit。
 
 
-使用流程
+使用流程：GUI
 --------
+
+1. 進入資料夾：
+
+   cd C:\Users\Lu_white\Documents\chrome_extension\ticket_plus_bot\sold_out_monitor
+
+2. 開 GUI：
+
+   start-monitor-gui.bat
+
+3. 在 GUI 填活動網址：
+
+   https://ticketplus.com.tw/activity/活動ID
+
+4. 先按「掃描一次」。
+
+5. 確認 Log 有列出場次。
+
+6. 要正式監控再按「開始監控」。
+
+7. 停止時按「停止」，或直接關閉 GUI。
+
+
+使用流程：CLI
+-------------
 
 1. 進入資料夾：
 
@@ -213,6 +296,10 @@ sold_out_text
 常用命令
 --------
 
+開 GUI：
+
+  start-monitor-gui.bat
+
 單次檢查：
 
   dist\sold_out_monitor.exe --config monitor_config.json --once
@@ -228,6 +315,10 @@ sold_out_text
 重新打包 exe：
 
   build-exe.bat
+
+重新打包 GUI exe：
+
+  build-gui-exe.bat
 
 
 和 extension trigger 的關係
@@ -278,18 +369,25 @@ monitor 只負責監控活動頁和送訊號。
 
 1. 不要再把 README 做得很花。
 2. 這份 README.txt 是主要接手文件。
-3. 修改 monitor.py 後，要用真實 Ticket Plus 活動頁跑 --once。
-4. 驗證要看前端渲染後的 DOM，不要只看 raw HTML。
-5. runtime 檔案不要 commit：
+3. GUI 入口是 monitor_gui.py / start-monitor-gui.bat。
+4. 修改 monitor.py 後，要用真實 Ticket Plus 活動頁跑 --once。
+5. 修改 monitor_gui.py 後，至少跑：
+
+   python -m unittest discover -s tests
+   python -m py_compile monitor.py monitor_gui.py
+
+6. GUI 的實際視窗需要在 Windows 桌面環境手動開一次確認。
+7. 驗證要看前端渲染後的 DOM，不要只看 raw HTML。
+8. runtime 檔案不要 commit：
 
    monitor_config.json
    logs\
    build\
    .ticketplus-monitor-state.json
-   sold_out_monitor.spec
+   *.spec
 
-6. 目前預設使用 Edge：
+9. 目前預設使用 Edge：
 
    "browser_channel": "msedge"
 
-7. 如果重打包 exe，記得確認 dist\sold_out_monitor.exe 能跑 --once。
+10. 如果重打包 exe，記得確認 dist\sold_out_monitor.exe 或 dist\sold_out_monitor_gui.exe 能啟動。
