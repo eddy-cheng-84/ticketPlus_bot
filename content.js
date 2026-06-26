@@ -7,7 +7,6 @@
   const QUEUE_WAIT_POLL_MS = 1000;
   const PANEL_OBSERVE_INTERVAL_MS = 150;
   const PANEL_SCAN_SCROLL_DELAY_MS = 120;
-  const MAX_CONSECUTIVE_REFRESH_NOT_FOUND = 10;
   const ACTIVITY_BUTTON_LABELS = ['立即購買', '尚未開賣'];
   const SCHEDULE_STATE_KEY = 'content_schedule_state_v1';
   const BOT_RUNTIME_KEY = 'bot_runtime_state_v1';
@@ -17,7 +16,6 @@
   let timerId = null;
   let autoTargets = [];
   let startOptions = {};
-  let consecutiveRefreshNotFoundCount = 0;
   let scheduleTimerId = null;
   let scheduleState = {
     enabled: false,
@@ -569,26 +567,11 @@
         return;
       }
       if (!flowResult.ok) {
-        if (flowResult.step === 'refresh' && flowResult.error === 'REFRESH_BUTTON_NOT_FOUND') {
-          consecutiveRefreshNotFoundCount += 1;
-          pushLog(
-            `更新票數按鈕連續失敗次數：${consecutiveRefreshNotFoundCount}/${MAX_CONSECUTIVE_REFRESH_NOT_FOUND}`
-          );
-          if (consecutiveRefreshNotFoundCount > MAX_CONSECUTIVE_REFRESH_NOT_FOUND) {
-            pushLog('更新票數按鈕連續失敗過多，將整頁重新整理');
-            consecutiveRefreshNotFoundCount = 0;
-            window.location.reload();
-            return;
-          }
-        } else {
-          consecutiveRefreshNotFoundCount = 0;
-        }
         pushLog(`流程失敗：${flowResult.step || 'unknown'} / ${flowResult.error || 'UNKNOWN'}`);
         await sleep(LOOP_RETRY_DELAY_MS);
         continue;
       }
 
-      consecutiveRefreshNotFoundCount = 0;
       pushLog('流程完成，進入下一輪');
     }
   }
@@ -956,7 +939,6 @@
 
     running = false;
     runGeneration += 1;
-    consecutiveRefreshNotFoundCount = 0;
     clearBotRuntimeState();
     if (timerId !== null) {
       window.clearInterval(timerId);
@@ -1008,7 +990,6 @@
       if (message.source === 'external_http_trigger') {
         pushLog('外部觸發：收到 HTTP 啟動信號');
       }
-      consecutiveRefreshNotFoundCount = 0;
       start(message);
       sendResponse({ ok: true, running: true, targets: autoTargets });
       return;
