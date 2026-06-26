@@ -836,6 +836,7 @@
 
     let attempt = 0;
     let panelResult = null;
+    let lastRefreshStartedAt = 0;
     while (true) {
       if (!running && runtimeOptions.includeNextStep) {
         return { ok: false, step: 'stopped', error: 'LOOP_STOPPED' };
@@ -846,37 +847,34 @@
 
       clickIKnowButtons();
       attempt += 1;
-      const refreshResult = clickRefreshOnce();
-      if (!refreshResult.ok) {
-        return { ok: false, step: 'refresh', error: refreshResult.error };
-      }
-
-      if (refreshToAreaDelayMs > 0) {
-        pushLog(`流程等待：重新整理時秒數 ${refreshToAreaDelayMs}ms`);
-        const observed = await observePanelEntriesDuringDelay(refreshToAreaDelayMs, isCancelled);
-        if (observed.cancelled) {
-          return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+      const now = Date.now();
+      const shouldRefresh = lastRefreshStartedAt === 0 || now - lastRefreshStartedAt >= refreshToAreaDelayMs;
+      if (shouldRefresh) {
+        const refreshResult = clickRefreshOnce();
+        if (!refreshResult.ok) {
+          return { ok: false, step: 'refresh', error: refreshResult.error };
         }
-        if (isCancelled()) {
-          return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
+        lastRefreshStartedAt = Date.now();
+        if (refreshToAreaDelayMs > 0) {
+          pushLog(`流程計時：點擊更新票數 delay ${refreshToAreaDelayMs}ms（背景計時中）`);
         }
-        panelResult = selectPanelForFlow(
-          options.selectedTargets || [],
-          options.orderMode || 'top_to_bottom',
-          observed.entries
-        );
-      } else {
-        panelResult = selectPanelForFlow(
-          options.selectedTargets || [],
-          options.orderMode || 'top_to_bottom'
-        );
       }
+      panelResult = selectPanelForFlow(
+        options.selectedTargets || [],
+        options.orderMode || 'top_to_bottom'
+      );
       if (!panelResult.ok) {
         if (
           panelResult.error === 'DESIRED_TARGETS_UNAVAILABLE' ||
-          panelResult.error === 'ALL_VISIBLE_TARGETS_UNAVAILABLE'
+          panelResult.error === 'ALL_VISIBLE_TARGETS_UNAVAILABLE' ||
+          panelResult.error === 'NO_PANEL_ENTRIES'
         ) {
-          pushLog('目前可見票區沒有明確剩餘票數可選，將重新整理後重試');
+          if (panelResult.error === 'NO_PANEL_ENTRIES') {
+            pushLog('目前尚未讀到票區資料，持續等待本輪更新結果');
+          } else {
+            pushLog('目前可見票區沒有明確剩餘票數可選，持續等待本輪更新結果');
+          }
+          await sleep(LOOP_RETRY_DELAY_MS);
           continue;
         }
         return { ok: false, step: 'panel', error: panelResult.error };
@@ -905,10 +903,6 @@
           if (!queueWaitResult.ok) {
             return { ok: false, step: 'queue_wait', error: queueWaitResult.error };
           }
-          await sleep(refreshToAreaDelayMs);
-          if (isCancelled()) {
-            return { ok: false, step: 'stopped', error: 'LOOP_CANCELLED' };
-          }
         }
         pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +' + (runtimeOptions.includeNextStep ? ' -> 下一步' : ''));
         return {
@@ -923,6 +917,7 @@
 
       if (plusResult.error === 'PLUS_ICON_NOT_FOUND' || plusResult.error === 'PLUS_BUTTON_NOT_FOUND') {
         pushLog(`流程重試：未找到 +，將重新整理後再試（第 ${attempt} 次）`);
+        await sleep(LOOP_RETRY_DELAY_MS);
         continue;
       }
 
