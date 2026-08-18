@@ -16,6 +16,8 @@
   let timerId = null;
   let autoTargets = [];
   let startOptions = {};
+  let lastExclusiveCodeFillSignature = '';
+  let lastExclusiveCodeMissingSignature = '';
   let scheduleTimerId = null;
   let scheduleState = {
     enabled: false,
@@ -145,6 +147,7 @@
         : [],
       orderMode: options?.orderMode || 'top_to_bottom',
       plusCount: options?.plusCount,
+      exclusiveCode: typeof options?.exclusiveCode === 'string' ? options.exclusiveCode.trim() : '',
       refreshToAreaDelayMs: options?.refreshToAreaDelayMs,
       areaToPlusDelayMs: options?.areaToPlusDelayMs
     };
@@ -157,6 +160,7 @@
         : [],
       orderMode: options?.orderMode || 'top_to_bottom',
       plusCount: options?.plusCount,
+      exclusiveCode: typeof options?.exclusiveCode === 'string' ? options.exclusiveCode.trim() : '',
       refreshToAreaDelayMs: options?.refreshToAreaDelayMs,
       areaToPlusDelayMs: options?.areaToPlusDelayMs
     };
@@ -589,9 +593,12 @@
       selectedTargets: autoTargets,
       orderMode: options.orderMode || 'top_to_bottom',
       plusCount: options.plusCount,
+      exclusiveCode: options.exclusiveCode,
       refreshToAreaDelayMs: options.refreshToAreaDelayMs,
       areaToPlusDelayMs: options.areaToPlusDelayMs
     });
+    lastExclusiveCodeFillSignature = '';
+    lastExclusiveCodeMissingSignature = '';
     running = true;
     runGeneration += 1;
     persistBotRuntimeState();
@@ -622,6 +629,81 @@
     target.click();
     pushLog(`手動點擊成功：「${keyword}」區塊`);
     return { ok: true };
+  }
+
+  function findExclusiveCodeInput() {
+    const scopedSelectors = [
+      '.exclusive-code .v-text-field__slot input',
+      '.exclusive-code input[type="text"]',
+      '.exclusive-code textarea'
+    ];
+
+    for (const selector of scopedSelectors) {
+      const input = document.querySelector(selector);
+      if (input) {
+        return input;
+      }
+    }
+
+    const candidates = document.querySelectorAll('.v-text-field__slot input, .v-text-field__slot textarea');
+    for (const input of candidates) {
+      const placeholder = normalizeText(input.getAttribute('placeholder') || '');
+      const wrapperText = normalizeText(input.closest('.v-input, .v-text-field, .exclusive-code')?.textContent || '');
+      const haystack = `${placeholder} ${wrapperText}`;
+      if (/PRESALE|MEMBERSHIP|序號|專屬碼|優先購票碼/i.test(haystack)) {
+        return input;
+      }
+    }
+
+    return null;
+  }
+
+  function setNativeInputValue(input, value) {
+    const prototype = input.tagName === 'TEXTAREA'
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype;
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
+    if (descriptor?.set) {
+      descriptor.set.call(input, value);
+    } else {
+      input.value = value;
+    }
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function fillExclusiveCodeIfAvailable(rawCode) {
+    const code = typeof rawCode === 'string' ? rawCode.trim() : '';
+    if (!code) {
+      return { ok: true, skipped: true, reason: 'EMPTY_EXCLUSIVE_CODE' };
+    }
+
+    const input = findExclusiveCodeInput();
+    if (!input) {
+      const missingSignature = `${window.location.pathname}|${code}`;
+      if (lastExclusiveCodeMissingSignature !== missingSignature) {
+        pushLog('專屬碼：尚未找到輸入欄位，略過本輪');
+        lastExclusiveCodeMissingSignature = missingSignature;
+      }
+      return { ok: true, skipped: true, reason: 'EXCLUSIVE_CODE_INPUT_NOT_FOUND' };
+    }
+
+    if (input.disabled || input.getAttribute('aria-disabled') === 'true') {
+      pushLog('專屬碼：輸入欄位目前不可用，略過本輪');
+      return { ok: true, skipped: true, reason: 'EXCLUSIVE_CODE_INPUT_DISABLED' };
+    }
+
+    if (input.value !== code) {
+      input.focus();
+      setNativeInputValue(input, code);
+    }
+
+    const fillSignature = `${window.location.pathname}|${code}|${input.getAttribute('placeholder') || ''}`;
+    if (lastExclusiveCodeFillSignature !== fillSignature) {
+      pushLog(`專屬碼：已填入「${code}」`);
+      lastExclusiveCodeFillSignature = fillSignature;
+    }
+    return { ok: true, filled: true };
   }
 
   function findPlusButtonInContainer(container) {
@@ -814,6 +896,43 @@
     }
   }
 
+  async function waitAfterNextStepClick(startHref, isCancelled) {
+    const maxWaitMs = 5000;
+    const startedAt = Date.now();
+    const hadNextStepButton = Boolean(findButtonByExactText('下一步'));
+
+    while (Date.now() - startedAt < maxWaitMs) {
+      if (typeof isCancelled === 'function' && isCancelled()) {
+        return { ok: false, error: 'LOOP_CANCELLED' };
+      }
+
+      if (getPageMode() === 'confirm_seat') {
+        pushLog('已進入結帳頁（confirmSeat），停止自動流程');
+        stop();
+        return { ok: true, stopped: true, pageMode: 'confirm_seat' };
+      }
+
+      if (isWaitingRoomPage()) {
+        return waitForWaitingRoomToFinish(isCancelled);
+      }
+
+      if (window.location.href !== startHref) {
+        pushLog('下一步後頁面已跳轉，停止本輪操作');
+        return { ok: true, redirected: true };
+      }
+
+      if (hadNextStepButton && !findButtonByExactText('下一步')) {
+        pushLog('下一步後按鈕已消失，停止本輪操作並等待頁面更新');
+        return { ok: true, nextButtonGone: true };
+      }
+
+      await sleep(200);
+    }
+
+    pushLog('下一步後等待頁面更新逾時，停止本輪操作');
+    return { ok: true, timedOut: true };
+  }
+
   function sleep(ms) {
     return new Promise((resolve) => {
       window.setTimeout(resolve, ms);
@@ -890,6 +1009,10 @@
 
       const plusResult = await clickPlusTimes(plusCount, panelResult.panelElement || null);
       if (plusResult.ok) {
+        if (options.exclusiveCode) {
+          await sleep(PLUS_CLICK_DELAY_MS);
+          fillExclusiveCodeIfAvailable(options.exclusiveCode);
+        }
         if (runtimeOptions.includeNextStep) {
           await sleep(AFTER_PLUS_BEFORE_NEXT_MS);
           if (isCancelled()) {
@@ -899,9 +1022,12 @@
           if (!nextResult.ok) {
             return { ok: false, step: 'next_step', error: nextResult.error };
           }
-          const queueWaitResult = await waitForWaitingRoomToFinish(isCancelled);
-          if (!queueWaitResult.ok) {
-            return { ok: false, step: 'queue_wait', error: queueWaitResult.error };
+          const afterNextResult = await waitAfterNextStepClick(window.location.href, isCancelled);
+          if (!afterNextResult.ok) {
+            return { ok: false, step: 'after_next_step', error: afterNextResult.error };
+          }
+          if (afterNextResult.stopped) {
+            return { ok: true, stopped: true };
           }
         }
         pushLog('一鍵流程完成：更新票數 -> 選票區 -> 點 +' + (runtimeOptions.includeNextStep ? ' -> 下一步' : ''));

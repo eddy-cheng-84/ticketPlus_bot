@@ -24,6 +24,7 @@ const externalTriggerIntervalSecEl = document.getElementById('externalTriggerInt
 const saveExternalTriggerBtn = document.getElementById('saveExternalTriggerBtn');
 const testExternalTriggerBtn = document.getElementById('testExternalTriggerBtn');
 const externalTriggerStatusEl = document.getElementById('externalTriggerStatus');
+const exclusiveCodeInput = document.getElementById('exclusiveCode');
 const logFilterSuccessEl = document.getElementById('logFilterSuccess');
 const logFilterTicketEl = document.getElementById('logFilterTicket');
 const logFilterErrorEl = document.getElementById('logFilterError');
@@ -43,6 +44,7 @@ let areaPreferences = [];
 let scheduleSettings = { startTime: '11:00:01', stopTime: '11:01:00' };
 let flowSettings = {
   ticketCount: 1,
+  exclusiveCode: '',
   refreshDelaySec: 1.5,
   areaDelaySec: 0.3,
   orderMode: 'top_to_bottom'
@@ -194,6 +196,7 @@ async function loadFlowSettings() {
   if (!saved || typeof saved !== 'object') {
     flowSettings = {
       ticketCount: 1,
+      exclusiveCode: '',
       refreshDelaySec: 1.5,
       areaDelaySec: 0.3,
       orderMode: 'top_to_bottom'
@@ -205,9 +208,11 @@ async function loadFlowSettings() {
   const refreshDelaySec = Number.parseFloat(String(saved.refreshDelaySec ?? '1.5'));
   const areaDelaySec = Number.parseFloat(String(saved.areaDelaySec ?? '0.3'));
   const orderMode = typeof saved.orderMode === 'string' ? saved.orderMode : 'top_to_bottom';
+  const exclusiveCode = typeof saved.exclusiveCode === 'string' ? saved.exclusiveCode.trim() : '';
 
   flowSettings = {
     ticketCount: Number.isFinite(ticketCount) ? Math.min(4, Math.max(0, ticketCount)) : 1,
+    exclusiveCode,
     refreshDelaySec: Number.isFinite(refreshDelaySec) && refreshDelaySec >= 0 ? refreshDelaySec : 1.5,
     areaDelaySec: Number.isFinite(areaDelaySec) && areaDelaySec >= 0 ? areaDelaySec : 0.3,
     orderMode
@@ -241,15 +246,18 @@ async function saveFlowSettings() {
   const ticketCount = Number.parseInt(ticketCountInput?.value || '1', 10);
   const refreshDelaySec = Number.parseFloat(refreshToAreaDelaySecInput?.value || '1.5');
   const areaDelaySec = Number.parseFloat(areaToPlusDelaySecInput?.value || '0.3');
+  const exclusiveCode = (exclusiveCodeInput?.value || '').trim();
 
   flowSettings = {
     ticketCount: Number.isFinite(ticketCount) ? Math.min(4, Math.max(0, ticketCount)) : 1,
+    exclusiveCode,
     refreshDelaySec: Number.isFinite(refreshDelaySec) && refreshDelaySec >= 0 ? refreshDelaySec : 1.5,
     areaDelaySec: Number.isFinite(areaDelaySec) && areaDelaySec >= 0 ? areaDelaySec : 0.3,
     orderMode: areaOrderModeEl?.value || 'top_to_bottom'
   };
 
   ticketCountInput.value = String(flowSettings.ticketCount);
+  exclusiveCodeInput.value = flowSettings.exclusiveCode;
   refreshToAreaDelaySecInput.value = String(flowSettings.refreshDelaySec);
   areaToPlusDelaySecInput.value = String(flowSettings.areaDelaySec);
   areaOrderModeEl.value = flowSettings.orderMode;
@@ -259,6 +267,7 @@ async function saveFlowSettings() {
 
 function hydrateFlowSettingsUi() {
   ticketCountInput.value = String(flowSettings.ticketCount);
+  exclusiveCodeInput.value = flowSettings.exclusiveCode || '';
   refreshToAreaDelaySecInput.value = String(flowSettings.refreshDelaySec);
   areaToPlusDelaySecInput.value = String(flowSettings.areaDelaySec);
   areaOrderModeEl.value = flowSettings.orderMode;
@@ -682,6 +691,7 @@ startBtn.addEventListener('click', async () => {
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
     plusCount: getTicketCount(),
+    exclusiveCode: (exclusiveCodeInput?.value || '').trim(),
     refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
     areaToPlusDelayMs: getAreaToPlusDelayMs()
   });
@@ -725,6 +735,7 @@ saveScheduleBtn.addEventListener('click', async () => {
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
     plusCount: getTicketCount(),
+    exclusiveCode: (exclusiveCodeInput?.value || '').trim(),
     refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
     areaToPlusDelayMs: getAreaToPlusDelayMs()
   });
@@ -761,6 +772,10 @@ stopScheduleBtn.addEventListener('click', async () => {
 });
 
 ticketCountInput.addEventListener('change', async () => {
+  await saveFlowSettings();
+});
+
+exclusiveCodeInput.addEventListener('change', async () => {
   await saveFlowSettings();
 });
 

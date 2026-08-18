@@ -64,6 +64,7 @@ async function getFlowSettings() {
   const areaDelaySec = Number.parseFloat(String(saved?.areaDelaySec ?? '0.3'));
   return {
     plusCount: Number.isFinite(ticketCount) ? Math.min(4, Math.max(0, ticketCount)) : 1,
+    exclusiveCode: typeof saved?.exclusiveCode === 'string' ? saved.exclusiveCode.trim() : '',
     refreshToAreaDelayMs:
       Number.isFinite(refreshDelaySec) && refreshDelaySec >= 0 ? Math.round(refreshDelaySec * 1000) : 1500,
     areaToPlusDelayMs:
@@ -178,6 +179,7 @@ async function startBotFromExternalTrigger(overrides = {}) {
     selectedTargets,
     orderMode: typeof overrides.orderMode === 'string' && overrides.orderMode ? overrides.orderMode : flowSettings.orderMode,
     plusCount: Number.isFinite(Number(overrides.plusCount)) ? Number(overrides.plusCount) : flowSettings.plusCount,
+    exclusiveCode: typeof overrides.exclusiveCode === 'string' ? overrides.exclusiveCode.trim() : flowSettings.exclusiveCode,
     refreshToAreaDelayMs: Number.isFinite(Number(overrides.refreshToAreaDelayMs))
       ? Number(overrides.refreshToAreaDelayMs)
       : flowSettings.refreshToAreaDelayMs,

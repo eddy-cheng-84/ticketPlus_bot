@@ -26,6 +26,14 @@
         <section class="flow-settings">
           <label for="ticketCount" class="keyword-label">幾張票</label>
           <input id="ticketCount" class="keyword-input" type="number" min="0" max="4" step="1" value="1" />
+          <label for="exclusiveCode" class="keyword-label">專屬碼／優先購票碼</label>
+          <input
+            id="exclusiveCode"
+            class="keyword-input"
+            type="text"
+            autocomplete="off"
+            placeholder="例如 BIGBANG V.I.P MEMBERSHIP PRESALE序號"
+          />
           <label for="refreshToAreaDelaySec" class="keyword-label">點擊更新票數 delay 秒數</label>
           <input id="refreshToAreaDelaySec" class="keyword-input" type="number" min="0" step="0.1" value="1.5" />
           <label for="areaToPlusDelaySec" class="keyword-label">選區後延遲幾秒按\+</label>
