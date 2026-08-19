@@ -16,6 +16,7 @@
   let timerId = null;
   let autoTargets = [];
   let startOptions = {};
+  // 避免同一輪或同一頁面重複輸出「找不到/已填入」專屬碼 log，讓 Log 不會被洗版。
   let lastExclusiveCodeFillSignature = '';
   let lastExclusiveCodeMissingSignature = '';
   let scheduleTimerId = null;
@@ -147,6 +148,7 @@
         : [],
       orderMode: options?.orderMode || 'top_to_bottom',
       plusCount: options?.plusCount,
+      // 專屬碼屬於流程設定的一部分，排程恢復時也要保留。
       exclusiveCode: typeof options?.exclusiveCode === 'string' ? options.exclusiveCode.trim() : '',
       refreshToAreaDelayMs: options?.refreshToAreaDelayMs,
       areaToPlusDelayMs: options?.areaToPlusDelayMs
@@ -160,6 +162,7 @@
         : [],
       orderMode: options?.orderMode || 'top_to_bottom',
       plusCount: options?.plusCount,
+      // START_BOT / RUN_PURCHASE_FLOW 都走同一個 sanitize，確保手動、排程、外部 trigger 行為一致。
       exclusiveCode: typeof options?.exclusiveCode === 'string' ? options.exclusiveCode.trim() : '',
       refreshToAreaDelayMs: options?.refreshToAreaDelayMs,
       areaToPlusDelayMs: options?.areaToPlusDelayMs
@@ -632,6 +635,12 @@
   }
 
   function findExclusiveCodeInput() {
+    /*
+      TicketPlus 的專屬碼/信用卡前六碼欄位是 Vuetify 動態 DOM：
+      - id 類似 input-597 / input-1180，會隨頁面重建改變，所以不能綁 id。
+      - 最穩定的外層是 .exclusive-code，實際輸入框在 .v-text-field__slot input。
+      - 有些活動可能沒有 .exclusive-code 或文字不同，所以後面再用 placeholder/label 關鍵字 fallback。
+    */
     const scopedSelectors = [
       '.exclusive-code .v-text-field__slot input',
       '.exclusive-code input[type="text"]',
@@ -650,6 +659,7 @@
       const placeholder = normalizeText(input.getAttribute('placeholder') || '');
       const wrapperText = normalizeText(input.closest('.v-input, .v-text-field, .exclusive-code')?.textContent || '');
       const haystack = `${placeholder} ${wrapperText}`;
+      // BIGBANG PRESALE、會員序號、優先購票碼、信用卡前六碼都會落在這類文字線索。
       if (/PRESALE|MEMBERSHIP|序號|專屬碼|優先購票碼/i.test(haystack)) {
         return input;
       }
@@ -659,6 +669,10 @@
   }
 
   function setNativeInputValue(input, value) {
+    /*
+      直接 input.value = value 有時 Vue/Vuetify 收不到狀態變化。
+      用原生 value setter 再 dispatch input/change，等同使用者真的打字，Vue 才會更新 v-model。
+    */
     const prototype = input.tagName === 'TEXTAREA'
       ? window.HTMLTextAreaElement.prototype
       : window.HTMLInputElement.prototype;
@@ -673,6 +687,10 @@
   }
 
   function fillExclusiveCodeIfAvailable(rawCode) {
+    /*
+      這個函式只負責「有欄位就填，沒有欄位就略過」。
+      不讓找不到專屬碼欄位變成流程失敗，因為不是每個活動/票區都需要專屬碼。
+    */
     const code = typeof rawCode === 'string' ? rawCode.trim() : '';
     if (!code) {
       return { ok: true, skipped: true, reason: 'EMPTY_EXCLUSIVE_CODE' };
@@ -897,6 +915,11 @@
   }
 
   async function waitAfterNextStepClick(startHref, isCancelled) {
+    /*
+      點「下一步」只代表按鈕被點到，不代表後端已經鎖票成功。
+      TicketPlus 可能會延遲切到 confirmSeat、排隊頁，或在原頁面更新錯誤狀態。
+      這裡等一小段時間觀察 URL / 排隊文字 / 下一步按鈕，避免馬上回 loop 重複點同一票區。
+    */
     const maxWaitMs = 5000;
     const startedAt = Date.now();
     const hadNextStepButton = Boolean(findButtonByExactText('下一步'));
@@ -1010,6 +1033,7 @@
       const plusResult = await clickPlusTimes(plusCount, panelResult.panelElement || null);
       if (plusResult.ok) {
         if (options.exclusiveCode) {
+          // 專屬碼欄位是點完 + 後才出現；先等 0.05 秒讓 Vue 把欄位 render 出來。
           await sleep(PLUS_CLICK_DELAY_MS);
           fillExclusiveCodeIfAvailable(options.exclusiveCode);
         }

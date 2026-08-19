@@ -26,6 +26,11 @@
         <section class="flow-settings">
           <label for="ticketCount" class="keyword-label">幾張票</label>
           <input id="ticketCount" class="keyword-input" type="number" min="0" max="4" step="1" value="1" />
+          <!--
+            專屬碼會在 content.js 裡面於「點完 + 之後」才填入。
+            這類欄位通常由 TicketPlus/Vuetify 動態產生，所以 GUI 只負責保存使用者輸入的值，
+            真正的 selector 會在 content script 依 .exclusive-code / .v-text-field__slot 去找。
+          -->
           <label for="exclusiveCode" class="keyword-label">專屬碼／優先購票碼</label>
           <input
             id="exclusiveCode"

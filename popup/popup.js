@@ -24,6 +24,7 @@ const externalTriggerIntervalSecEl = document.getElementById('externalTriggerInt
 const saveExternalTriggerBtn = document.getElementById('saveExternalTriggerBtn');
 const testExternalTriggerBtn = document.getElementById('testExternalTriggerBtn');
 const externalTriggerStatusEl = document.getElementById('externalTriggerStatus');
+// 專屬碼/信用卡前六碼等欄位由 TicketPlus 在購票流程中動態出現，popup 只保存要填的字串。
 const exclusiveCodeInput = document.getElementById('exclusiveCode');
 const logFilterSuccessEl = document.getElementById('logFilterSuccess');
 const logFilterTicketEl = document.getElementById('logFilterTicket');
@@ -44,6 +45,7 @@ let areaPreferences = [];
 let scheduleSettings = { startTime: '11:00:01', stopTime: '11:01:00' };
 let flowSettings = {
   ticketCount: 1,
+  // 空字串代表不啟用自動填專屬碼；content.js 會直接略過，不影響原本搶票流程。
   exclusiveCode: '',
   refreshDelaySec: 1.5,
   areaDelaySec: 0.3,
@@ -196,6 +198,7 @@ async function loadFlowSettings() {
   if (!saved || typeof saved !== 'object') {
     flowSettings = {
       ticketCount: 1,
+      // 舊版使用者沒有這個欄位，預設空字串可以保持向後相容。
       exclusiveCode: '',
       refreshDelaySec: 1.5,
       areaDelaySec: 0.3,
@@ -208,6 +211,7 @@ async function loadFlowSettings() {
   const refreshDelaySec = Number.parseFloat(String(saved.refreshDelaySec ?? '1.5'));
   const areaDelaySec = Number.parseFloat(String(saved.areaDelaySec ?? '0.3'));
   const orderMode = typeof saved.orderMode === 'string' ? saved.orderMode : 'top_to_bottom';
+  // trim 後保存，避免使用者複製時多帶空白導致 TicketPlus 判斷碼值錯誤。
   const exclusiveCode = typeof saved.exclusiveCode === 'string' ? saved.exclusiveCode.trim() : '';
 
   flowSettings = {
@@ -246,6 +250,7 @@ async function saveFlowSettings() {
   const ticketCount = Number.parseInt(ticketCountInput?.value || '1', 10);
   const refreshDelaySec = Number.parseFloat(refreshToAreaDelaySecInput?.value || '1.5');
   const areaDelaySec = Number.parseFloat(areaToPlusDelaySecInput?.value || '0.3');
+  // 這個值之後會跟 START_BOT / SET_SCHEDULE 一起送給 content.js。
   const exclusiveCode = (exclusiveCodeInput?.value || '').trim();
 
   flowSettings = {
@@ -691,6 +696,7 @@ startBtn.addEventListener('click', async () => {
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
     plusCount: getTicketCount(),
+    // 啟動當下把目前 GUI 的專屬碼一起送出，避免 storage 尚未刷新時拿到舊值。
     exclusiveCode: (exclusiveCodeInput?.value || '').trim(),
     refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
     areaToPlusDelayMs: getAreaToPlusDelayMs()
@@ -735,6 +741,7 @@ saveScheduleBtn.addEventListener('click', async () => {
     selectedTargets: getSelectedTargets(),
     orderMode: areaOrderModeEl?.value || 'top_to_bottom',
     plusCount: getTicketCount(),
+    // 排程啟動時會使用儲存當下的專屬碼，不需要使用者在觸發秒數前再打開 popup。
     exclusiveCode: (exclusiveCodeInput?.value || '').trim(),
     refreshToAreaDelayMs: getRefreshToAreaDelayMs(),
     areaToPlusDelayMs: getAreaToPlusDelayMs()
