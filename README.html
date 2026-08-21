@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticket Plus Bot 說明</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --line: #dbe3ee;
+      --surface: #ffffff;
+      --soft: #f3f7fb;
+      --accent: #0f766e;
+      --accent-soft: #dff7f2;
+      --warning: #fff7dc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #edf5f4, #f8fafc 52%, #eef3fb);
+      color: var(--ink);
+      font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      line-height: 1.75;
+    }
+
+    main {
+      width: min(1080px, calc(100% - 32px));
+      margin: 32px auto 56px;
+    }
+
+    header, section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+      padding: 24px 28px;
+      margin-bottom: 18px;
+    }
+
+    header {
+      border-top: 5px solid var(--accent);
+      padding-top: 20px;
+    }
+
+    h1, h2, h3 { line-height: 1.3; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 4vw, 2.7rem); }
+    h2 { margin: 0 0 14px; font-size: 1.45rem; color: #0f4c49; }
+    h3 { margin: 20px 0 8px; font-size: 1.08rem; }
+    p { margin: 8px 0 12px; }
+    .lead { color: var(--muted); font-size: 1.05rem; }
+    .badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #115e59;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    ul, ol { padding-left: 1.5rem; }
+    li + li { margin-top: 5px; }
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #eef2f7;
+      color: #334155;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.92em;
+    }
+    pre {
+      overflow-x: auto;
+      margin: 12px 0;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: #172033;
+      color: #e5edf8;
+      font: 0.9rem/1.6 Consolas, "Courier New", monospace;
+    }
+    .note {
+      padding: 12px 15px;
+      border-left: 4px solid #d49a00;
+      background: var(--warning);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      padding: 15px 17px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+    }
+    .card strong { display: block; margin-bottom: 4px; color: #0f4c49; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #0f4c49; background: var(--soft); }
+    footer { color: var(--muted); text-align: center; font-size: 0.9rem; }
+
+    @media (max-width: 640px) {
+      main { width: min(100% - 18px, 1080px); margin-top: 12px; }
+      header, section { padding: 18px; border-radius: 12px; }
+      th, td { padding: 7px 5px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Ticket Plus Bot</h1>
+      <p class="lead">Chrome / Edge Chromium Manifest V3 擴充功能，透過右側 Side Panel 控制 Ticket Plus 的活動入口、票區選擇、加票與下一步。</p>
+      <span class="badge">目前主要開發分支：dev</span>
+    </header>
+
+    <section>
+      <h2>支援頁面</h2>
+      <div class="grid">
+        <div class="card"><strong>活動頁</strong><code>/activity/...</code><br>啟動後尋找並點擊「立即購買」或「尚未開賣」。</div>
+        <div class="card"><strong>搶票頁</strong><code>/order/...</code><br>執行更新票數、選區、點加號、專屬碼與下一步。</div>
+        <div class="card"><strong>結帳頁</strong><code>/confirmSeat/...</code><br>偵測到後停止自動流程，不再操作頁面。</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>安裝</h2>
+      <ol>
+        <li>開啟 Chrome 的 <code>chrome://extensions/</code> 或 Edge 的 <code>edge://extensions/</code>。</li>
+        <li>開啟「開發人員模式」。</li>
+        <li>選擇「載入未封裝項目」並選取：<code>C:\Users\Lu_white\Documents\chrome_extension\ticket_plus_bot</code></li>
+        <li>開啟 Ticket Plus 頁面，點擊工具列圖示開啟右側 Side Panel。</li>
+        <li>修改程式後，先在擴充功能管理頁按「重新載入」，再重新整理 Ticket Plus 分頁。</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>GUI 設定</h2>
+      <table>
+        <thead><tr><th>設定</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td>讀取票區清單</td><td>更新票數後掃描整頁票區，包含整頁捲動後才出現的區域。</td></tr>
+          <tr><td>全選 / 取消全選</td><td>控制要納入自動選擇的票區；勾選後可調整上移/下移優先順序。</td></tr>
+          <tr><td>幾張票</td><td>每輪點擊 <code>+</code> 的次數，限制為 0 到 4。</td></tr>
+          <tr><td>專屬碼／優先購票碼</td><td>點完 <code>+</code> 後才填入；留白表示不啟用。</td></tr>
+          <tr><td>點擊更新票數 delay 秒數</td><td>記錄更新票數的開始時間。等待期間仍可同步讀取票區與嘗試選擇。</td></tr>
+          <tr><td>選區後延遲幾秒按 +</td><td>點進票區後等待 DOM 展開，再開始點擊加號。</td></tr>
+          <tr><td>選擇順序</td><td>支援 <code>top_to_bottom</code>、<code>bottom_to_top</code>、<code>middle</code>、<code>random</code>。</td></tr>
+          <tr><td>每日自動啟動/暫停</td><td>使用 24 小時制 <code>HH:MM:SS</code>，例如 <code>12:00:00</code> 是中午 12 點。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>按下啟動後的流程</h2>
+      <ol>
+        <li><code>/activity/...</code>：點擊「立即購買」或「尚未開賣」；找不到時寫 Log 並等待下一輪。</li>
+        <li><code>/order/...</code>：點擊「我知道了」（如果存在），再點擊「更新票數」。</li>
+        <li>以更新票數的時間點 A 計算 delay，同步讀取票區。</li>
+        <li>先套用 GUI 勾選清單，再套用選擇順序。</li>
+        <li>有「剩餘 N」且 N 大於 0 的區域可選；「熱賣中」即使沒有明確剩餘數，也視為可嘗試；明確「剩餘 0」會跳過。</li>
+        <li>點選票區，等待選區後延遲，依設定張數點擊 <code>+</code>。</li>
+        <li>多張票的 <code>+</code> 之間間隔 50ms；點完後再等 50ms 才填專屬碼。</li>
+        <li>填碼後等待 100ms，點擊「下一步」。</li>
+        <li>下一步後最多觀察 5 秒。排隊頁只等待自動跳轉；進入 <code>/confirmSeat/...</code> 則停止流程。</li>
+        <li>尚未成功時寫入 Log，回到下一輪；下一輪在達到 A 的 delay 後才再次更新票數。</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>票區與專屬碼 selector</h2>
+      <p>票區標題使用 <code>button.v-expansion-panel-header</code>，加號使用包含 <code>i.mdi.mdi-plus</code> 的按鈕。票區名稱比對前會移除票數、價格與狀態文字，避免更新後名稱不一致。</p>
+      <p>專屬碼不依賴會變動的動態 id，例如 <code>input-597</code>，目前依序尋找：</p>
+      <ul>
+        <li><code>.exclusive-code .v-text-field__slot input</code></li>
+        <li><code>.exclusive-code input[type="text"]</code></li>
+        <li><code>.exclusive-code textarea</code></li>
+        <li>placeholder 或外層文字含有 <code>PRESALE</code>、<code>MEMBERSHIP</code>、<code>序號</code>、<code>專屬碼</code>、<code>優先購票碼</code> 的輸入欄位</li>
+      </ul>
+      <p>填入後會派送 <code>input</code> 與 <code>change</code> 事件，讓 Vue / Vuetify 收到內容。找不到專屬碼欄位時只略過填碼，不會讓整個流程失敗。</p>
+    </section>
+
+    <section>
+      <h2>Log 篩選</h2>
+      <p>Side Panel 的 Log 可以勾選：成功、票況、失敗、掃描細節、系統。</p>
+      <div class="note">要確認「到底掃描到哪些區域」，請打開「掃描細節」。Log 會列出初始區域、每次整頁捲動後的實際區域列表，以及最後合併結果。</div>
+    </section>
+
+    <section>
+      <h2>外部 HTTP 觸發</h2>
+      <h3>啟動 Python server</h3>
+      <pre>python trigger_server.py</pre>
+      <p>預設服務：<code>http://127.0.0.1:16888/trigger</code></p>
+      <ol>
+        <li>Side Panel 勾選「啟用外部 HTTP 觸發」。</li>
+        <li>URL 填入上面的位址，選擇 GET 或 POST。</li>
+        <li>設定輪詢秒數，最小為 0.5 秒。</li>
+        <li>按「儲存外部觸發設定」。</li>
+      </ol>
+
+      <h3>GET 測試</h3>
+      <p>開啟 <code>http://127.0.0.1:16888/trigger?fire=1</code>，或按 Side Panel 的「立即測試外部觸發」。這會暫存一次性 trigger，擴充功能下一次輪詢取到後，對尚未執行中的 Ticket Plus 分頁送出啟動指令。</p>
+
+      <h3>POST 測試</h3>
+      <pre>Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:16888/trigger `
+  -ContentType "application/json" `
+  -Body '{"trigger":true,"id":"job-001"}'</pre>
+
+      <p>POST 也可以用 <code>options</code> 覆蓋本次執行設定：</p>
+      <pre>{
+  "trigger": true,
+  "id": "job-002",
+  "options": {
+    "selectedTargets": ["A區"],
+    "orderMode": "top_to_bottom",
+    "plusCount": 2,
+    "exclusiveCode": "ABC123",
+    "refreshToAreaDelayMs": 1500,
+    "areaToPlusDelayMs": 300
+  }
+}</pre>
+      <p>沒有提供 <code>options.exclusiveCode</code> 時，會沿用 Side Panel 儲存的專屬碼。</p>
+    </section>
+
+    <section>
+      <h2>外部觸發沒有反應時</h2>
+      <ol>
+        <li>確認 <code>trigger_server.py</code> 的視窗仍在執行。</li>
+        <li>開啟 <code>http://127.0.0.1:16888/trigger?fire=1</code>，確認回傳 <code>armed: true</code>。</li>
+        <li>確認 Side Panel 的 URL、方法、輪詢秒數已儲存且顯示啟用。</li>
+        <li>重新整理 Ticket Plus 分頁，確認 Log 出現「內容腳本已載入，等待指令」。</li>
+        <li>查看 Log 是否有外部觸發錯誤或 <code>NO_TICKETPLUS_TAB</code>。</li>
+      </ol>
+      <p>Python server 只負責暫存與回傳 trigger；真正啟動流程的是擴充功能的 background script 與 content script。</p>
+    </section>
+
+    <section>
+      <h2>主要檔案</h2>
+      <ul>
+        <li><code>manifest.json</code>：MV3、Side Panel、權限與 content script。</li>
+        <li><code>popup/popup.html</code>：Side Panel GUI。</li>
+        <li><code>popup/popup.js</code>：GUI 設定、票區清單、外部觸發測試與 Log 篩選。</li>
+        <li><code>content.js</code>：DOM 掃描、票區選擇、加號、專屬碼、下一步與頁面狀態。</li>
+        <li><code>background.js</code>：外部 HTTP 輪詢、觸發去重與分頁啟動。</li>
+        <li><code>trigger_server.py</code>：本機 GET / POST trigger server。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>開發檢查</h2>
+      <pre>node --check content.js
+node --check background.js
+node --check popup/popup.js
+git diff --check</pre>
+      <p>目前專屬碼功能的 release branch：<code>release/exclusive-code-autofill</code>。</p>
+    </section>
+
+    <footer>Ticket Plus Bot project README</footer>
+  </main>
+</body>
+</html>
