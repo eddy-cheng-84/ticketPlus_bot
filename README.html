@@ -242,6 +242,20 @@
     </section>
 
     <section>
+      <h2>與售完監控器整合</h2>
+      <p><code>sold_out_monitor/</code> 是同一個 repository 裡的獨立輔助工具，使用 Playwright 等待 Ticket Plus 活動頁完成前端渲染，再從 <code>document.body.innerText</code> 解析場次與售票狀態；不要只用 requests 讀 raw HTML。</p>
+      <p>建議先啟動 GUI：</p>
+      <pre>cd C:\Users\Lu_white\Documents\chrome_extension\ticket_plus_bot\sold_out_monitor
+start-monitor-gui.bat</pre>
+      <p>CLI 常用指令：</p>
+      <pre>start-monitor.bat
+dist\sold_out_monitor.exe --config monitor_config.json --once
+dist\sold_out_monitor.exe --config monitor_config.json --test-notify</pre>
+      <p>監控器偵測到場次從「銷售一空」變成可通知狀態時，會依設定重複送出 Webhook；若啟用 Extension Trigger，還會通知 <code>http://127.0.0.1:16888/trigger</code>，讓擴充功能輪詢後啟動 Ticket Plus 流程。監控器的設定、Log、state file 與 build 產物都是 runtime，不要加入 commit。</p>
+      <p>完整接手與維護資訊請看 <code>agent.md</code>。</p>
+    </section>
+
+    <section>
       <h2>主要檔案</h2>
       <ul>
         <li><code>manifest.json</code>：MV3、Side Panel、權限與 content script。</li>
@@ -250,6 +264,10 @@
         <li><code>content.js</code>：DOM 掃描、票區選擇、加號、專屬碼、下一步與頁面狀態。</li>
         <li><code>background.js</code>：外部 HTTP 輪詢、觸發去重與分頁啟動。</li>
         <li><code>trigger_server.py</code>：本機 GET / POST trigger server。</li>
+        <li><code>sold_out_monitor/monitor.py</code>：Playwright 活動頁解析、狀態比較與通知。</li>
+        <li><code>sold_out_monitor/monitor_gui.py</code>：監控器 GUI 與設定表單。</li>
+        <li><code>sold_out_monitor/README.txt</code>：監控器詳細操作說明。</li>
+        <li><code>agent.md</code>：給下一位開發者或 agent 的架構、測試與排錯指南。</li>
       </ul>
     </section>
 
@@ -259,6 +277,9 @@
 node --check background.js
 node --check popup/popup.js
 git diff --check</pre>
+      <p>主要開發分支是 <code>dev</code>。保留此分支並第一次推送時使用：</p>
+      <pre>git push -u origin dev</pre>
+      <p><code>-u</code> 只設定本機 <code>dev</code> 與遠端 <code>origin/dev</code> 的追蹤關係，不會影響其他 branch。</p>
       <p>目前專屬碼功能的 release branch：<code>release/exclusive-code-autofill</code>。</p>
     </section>
 
